@@ -1,0 +1,28 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+:root {
+  --background: #fff8e7; /* Adjusted to match the screenshot */
+  --foreground: #333333; /* Darker text color */
+  --font-faux-monospace: "IBM Plex Mono", "Courier New", Courier, monospace; /* Updated to IBM Plex Mono for a more modern look */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h1 {
+  font-family: var(--font-faux-monospace);
+  color: var(--foreground);
+  font-weight: 600; /* Slightly bolder */
+  opacity: 0.8; /* Match the faded look */
+}

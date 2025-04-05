@@ -1,0 +1,8 @@
+# Unfindables - Project Rules and Guidelines
+
+## Project Overview
+Unfindables is a Next.js web application that curates and showcases obscure but useful websites, tools, and digital gems for indie developers. The platform aims to help developers discover hidden treasures of the internet that can inspire and assist in their work.
+
+## Agent Instructions
+
+Whenever you are updating the database with crucial changes, update this file to reflect the changes. The goal is that you always have up to date context about the project.
