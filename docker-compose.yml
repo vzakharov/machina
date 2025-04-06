@@ -17,9 +17,9 @@ services:
       # e.g., DATABASE_URL or NEXT_PUBLIC_SUPABASE_URL
       NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
       NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-      # Ensure this matches the key in the db service
+      # Ensure this matches the key in the supabase service
     depends_on:
-      - db
+      - supabase
     networks:
       - unfindables-net
 
@@ -33,17 +33,17 @@ services:
       - ./django:/code # Mount local code for development
     environment:
       # Add Django specific environment variables here
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
-      # Ensure this matches the db service credentials
+      DATABASE_URL: postgresql://postgres:postgres@supabase:5432/postgres
+      # Ensure this matches the supabase service credentials
     depends_on:
-      - db
+      - supabase
     networks:
       - unfindables-net
 
-  db:
+  supabase:
     image: supabase/postgres:15.1.0.117
     ports:
-      - "54322:5432" # Map host port 54322 to container port 5432 to avoid conflicts
+      - "54321:5432" # Map host port 54321 to container port 5432 to match Next.js env var
     volumes:
       - supabase_db:/var/lib/postgresql/data
     environment:
@@ -51,9 +51,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres # Use a secure password in production
       # Default Supabase anon key (use for local dev only)
-      # SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
       # Default Supabase service_role key (use for local dev only)
-      # SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
     networks:
       - unfindables-net
 

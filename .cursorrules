@@ -12,3 +12,4 @@ Unfindables is a full-stack web application that curates and showcases obscure b
 - Keep components modular and reusable
 - Maintain type safety
 - Update this file and README.md on significant changes
+- As the app runs in docker, run commands via docker CLI
