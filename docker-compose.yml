@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  traefik:
+    image: traefik:v2.10
+    ports:
+      - "80:80"
+      - "8080:8080" # Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    networks:
+      - unfindables-net
+
   nextjs:
     build:
       context: ./nextjs
@@ -22,6 +37,10 @@ services:
       - supabase
     networks:
       - unfindables-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextjs.rule=Host(`unfindables.localhost`)"
+      - "traefik.http.services.nextjs.loadbalancer.server.port=3000"
 
   django:
     build:
@@ -39,6 +58,10 @@ services:
       - supabase
     networks:
       - unfindables-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.django.rule=Host(`django.unfindables.localhost`)"
+      - "traefik.http.services.django.loadbalancer.server.port=8000"
 
   supabase:
     image: supabase/postgres:15.1.0.117
@@ -56,6 +79,10 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
     networks:
       - unfindables-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.supabase.rule=Host(`db.unfindables.localhost`)"
+      - "traefik.http.services.supabase.loadbalancer.server.port=5432"
 
 volumes:
   supabase_db:
