@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Unfindables
+
+A curated collection of obscure but useful websites, tools, and digital gems for indie developers. Discover hidden treasures of the internet that can inspire and assist in your development journey.
+
+## About
+
+Unfindables is a full-stack web application that helps developers discover valuable but lesser-known digital resources. The platform combines a modern Next.js frontend with a robust Django backend to deliver a seamless experience for discovering and sharing internet gems.
+
+## Project Structure
+
+- `/nextjs` - Next.js frontend application
+- `/django` - Django backend API
+- `docker-compose.yml` - Docker configuration for development
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Docker and Docker Compose
+- Node.js (for local frontend development)
+- Python 3.x (for local backend development)
+
+### Development Setup
+
+Start the full stack using Docker:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker-compose up
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Frontend
+- [Next.js](https://nextjs.org) - React framework
+- [TypeScript](https://www.typescriptlang.org/) - Type safety
+- [Tailwind CSS](https://tailwindcss.com) - Styling
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Backend
+- [Django](https://www.djangoproject.com/) - Python web framework
+- [Django REST Framework](https://www.django-rest-framework.org/) - API development
+- SQLite (development) / PostgreSQL (production)
 
-## Learn More
+## Contributing
 
-To learn more about Next.js, take a look at the following resources:
+We welcome contributions! If you have suggestions for websites or tools to add, or if you'd like to help improve the platform, please feel free to open an issue or submit a pull request.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is open source and available under the MIT License.
