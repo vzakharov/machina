@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  nextjs:
+    build:
+      context: ./nextjs
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./nextjs:/app # Mount local code for development
+      # Add node_modules volume to prevent conflicts with host node_modules
+      - /app/node_modules
+      - /app/.next
+    environment:
+      # Add any Next.js specific environment variables here
+      # e.g., DATABASE_URL or NEXT_PUBLIC_SUPABASE_URL
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+      # Ensure this matches the key in the db service
+    depends_on:
+      - db
+    networks:
+      - unfindables-net
+
+  django:
+    build:
+      context: ./django
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./django:/code # Mount local code for development
+    environment:
+      # Add Django specific environment variables here
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
+      # Ensure this matches the db service credentials
+    depends_on:
+      - db
+    networks:
+      - unfindables-net
+
+  db:
+    image: supabase/postgres:15.1.0.117
+    ports:
+      - "54322:5432" # Map host port 54322 to container port 5432 to avoid conflicts
+    volumes:
+      - supabase_db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # Use a secure password in production
+      # Default Supabase anon key (use for local dev only)
+      # SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+      # Default Supabase service_role key (use for local dev only)
+      # SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+    networks:
+      - unfindables-net
+
+volumes:
+  supabase_db:
+
+networks:
+  unfindables-net:
+    driver: bridge 

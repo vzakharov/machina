@@ -5,4 +5,4 @@ Unfindables is a Next.js web application that curates and showcases obscure but 
 
 ## Agent Instructions
 
-Whenever you are updating the database with crucial changes, update this file to reflect the changes. The goal is that you always have up to date context about the project.
+Whenever you are updating the app with crucial changes, update this file to reflect the changes. The goal is that you always have up to date context about the project.
