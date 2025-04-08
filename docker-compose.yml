@@ -28,13 +28,10 @@ services:
       - /app/node_modules
       - /app/.next
     environment:
-      # Add any Next.js specific environment variables here
-      # e.g., DATABASE_URL or NEXT_PUBLIC_SUPABASE_URL
-      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-      # Ensure this matches the key in the supabase service
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
     depends_on:
-      - supabase
+      - kong
     networks:
       - unfindables-net
     labels:
@@ -47,15 +44,13 @@ services:
       context: ./django
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./django:/code # Mount local code for development
     environment:
-      # Add Django specific environment variables here
-      DATABASE_URL: postgresql://postgres:postgres@supabase:5432/postgres
-      # Ensure this matches the supabase service credentials
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
     depends_on:
-      - supabase
+      - db
     networks:
       - unfindables-net
     labels:
@@ -63,26 +58,84 @@ services:
       - "traefik.http.routers.django.rule=Host(`django.unfindables.localhost`)"
       - "traefik.http.services.django.loadbalancer.server.port=8000"
 
-  supabase:
-    image: supabase/postgres:15.1.0.117
+  # Supabase stack
+  studio:
+    container_name: supabase-studio
+    image: supabase/studio:20250317-6955350
+    restart: unless-stopped
     ports:
-      - "54321:5432" # Map host port 54321 to container port 5432 to match Next.js env var
-    volumes:
-      - supabase_db:/var/lib/postgresql/data
+      - "3001:3000"
     environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres # Use a secure password in production
-      # Default Supabase anon key (use for local dev only)
-      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-      # Default Supabase service_role key (use for local dev only)
-      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+      SUPABASE_URL: http://kong:8000
+      STUDIO_PG_META_URL: http://meta:8080
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+    depends_on:
+      - kong
+      - meta
     networks:
       - unfindables-net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.supabase.rule=Host(`db.unfindables.localhost`)"
-      - "traefik.http.services.supabase.loadbalancer.server.port=5432"
+      - "traefik.http.routers.studio.rule=Host(`studio.unfindables.localhost`)"
+      - "traefik.http.services.studio.loadbalancer.server.port=3000"
+
+  kong:
+    container_name: supabase-kong
+    image: kong:2.8.1
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+    volumes:
+      - ./volumes/api:/var/lib/kong:Z
+    networks:
+      - unfindables-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kong.rule=Host(`api.unfindables.localhost`)"
+      - "traefik.http.services.kong.loadbalancer.server.port=8000"
+
+  meta:
+    container_name: supabase-meta
+    image: supabase/postgres-meta:v0.78.0
+    depends_on:
+      - db
+    restart: unless-stopped
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: ${POSTGRES_PORT}
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - unfindables-net
+
+  db:
+    container_name: supabase-db
+    image: supabase/postgres:15.8.1.060
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - ./volumes/db/init.sql:/docker-entrypoint-initdb.d/init.sql:Z
+      - ./volumes/db/data:/var/lib/postgresql/data:Z
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    networks:
+      - unfindables-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.db.rule=Host(`db.unfindables.localhost`)"
+      - "traefik.http.services.db.loadbalancer.server.port=${POSTGRES_PORT}"
 
 volumes:
   supabase_db:
