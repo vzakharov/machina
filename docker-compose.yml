@@ -79,6 +79,8 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.studio.rule=Host(`studio.unfindables.localhost`)"
       - "traefik.http.services.studio.loadbalancer.server.port=3000"
+    healthcheck:
+      disable: true
 
   kong:
     container_name: supabase-kong
@@ -142,4 +144,4 @@ volumes:
 
 networks:
   unfindables-net:
-    driver: bridge 
+    driver: bridge
