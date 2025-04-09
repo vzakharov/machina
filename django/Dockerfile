@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.13.2-alpine
+FROM python:3.12-alpine
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -7,6 +7,9 @@ ENV PYTHONUNBUFFERED 1
 
 # Set the working directory in the container
 WORKDIR /code
+
+# Install PostgreSQL dependencies
+RUN apk add --no-cache postgresql-dev gcc python3-dev musl-dev
 
 # Install dependencies
 COPY requirements.txt /code/
