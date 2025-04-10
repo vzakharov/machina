@@ -27,6 +27,9 @@ ALTER ROLE service_role SET search_path TO public;
 -- Extension for UUID generation
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Extension for HTTP requests (required for webhooks)
+CREATE EXTENSION IF NOT EXISTS "pg_net";
+
 -- Create basic tables for auth schema
 CREATE TABLE IF NOT EXISTS auth.users (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
