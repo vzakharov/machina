@@ -1,2 +1,0 @@
-#!/bin/sh
-docker exec -it unfindables-django-1 sh /code/pmpy "$@"
