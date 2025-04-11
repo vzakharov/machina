@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     console.log('Webhook received:', JSON.stringify(data, null, 2));
     
     // Extract info from the webhook
-    const { table, schema, operation, new_record } = data;
+    const { table, schema, operation } = data;
     
     console.log(`Operation '${operation}' on ${schema}.${table}`);
     

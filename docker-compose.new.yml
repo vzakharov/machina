@@ -1,5 +1,9 @@
 version: '3.8'
 
+# Import Supabase services
+include:
+  - path: ./supabase-docker/docker/docker-compose.yml
+
 services:
   nextjs:
     build:
@@ -13,8 +17,10 @@ services:
       - /app/node_modules
       - /app/.next
     environment:
-      NEXT_PUBLIC_SUPABASE_URL: http://api.supabase.localhost
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+    depends_on:
+      - kong
     networks:
       - unfindables-net
       - supabase_network
@@ -32,7 +38,9 @@ services:
     volumes:
       - ./django:/code # Mount local code for development
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
+    depends_on:
+      - db
     networks:
       - unfindables-net
       - supabase_network
@@ -57,33 +65,9 @@ services:
       - unfindables-net
       - supabase_network
 
-  # Proxy services for Supabase containers
-  supabase-api-proxy:
-    image: alpine/socat
-    command: tcp-listen:80,fork,reuseaddr tcp-connect:supabase-kong:8000
-    networks:
-      - supabase_network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.supabase-api.rule=Host(`api.supabase.localhost`)"
-      - "traefik.http.services.supabase-api.loadbalancer.server.port=80"
-
-
-  supabase-studio-proxy:
-    image: alpine/socat
-    command: tcp-listen:80,fork,reuseaddr tcp-connect:supabase-studio:3000
-    networks:
-      - supabase_network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.supabase-studio.rule=Host(`studio.supabase.localhost`)"
-      - "traefik.http.services.supabase-studio.loadbalancer.server.port=80"
-
-
-
-
 networks:
   unfindables-net:
     driver: bridge
   supabase_network:
-    external: true 
+    external: true
+    name: supabase_network 
