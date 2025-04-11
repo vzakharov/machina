@@ -15,7 +15,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from unfindables.views import supabase_webhook, test_webhook
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/webhooks/supabase', supabase_webhook, name='supabase_webhook'),
+    path('api/webhooks/test', test_webhook, name='test_webhook'),
 ]

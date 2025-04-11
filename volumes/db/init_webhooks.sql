@@ -1,7 +1,7 @@
 -- This file will be executed during initialization to set up all webhooks
 
 -- First, ensure the 'net' extension is enabled
-CREATE EXTENSION IF NOT EXISTS "pg_net";
+-- This is now done in 00-pg-net-extension.sql
 
 -- Load environment variables into PostgreSQL settings
 -- This allows us to access environment variables via SQL

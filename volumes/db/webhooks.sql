@@ -2,7 +2,7 @@ CREATE SCHEMA IF NOT EXISTS supabase_functions;
 
 CREATE TABLE IF NOT EXISTS supabase_functions.hooks (
   id bigserial PRIMARY KEY,
-  hook_table_id uuid REFERENCES supabase_functions.hooks ON DELETE CASCADE,
+  hook_table_id bigint REFERENCES supabase_functions.hooks(id) ON DELETE CASCADE,
   hook_name text,
   created_at timestamptz DEFAULT NOW(),
   request_id uuid
@@ -19,7 +19,7 @@ BEGIN
   LOOP
     IF position('hooks' in r.object_identity) > 0 THEN
       INSERT INTO supabase_functions.hooks (hook_table_id, hook_name, request_id)
-      VALUES (gen_random_uuid(), TG_ARGV[0], gen_random_uuid());
+      VALUES (1, TG_ARGV[0], gen_random_uuid());
     END IF;
   END LOOP;
 END;
@@ -27,13 +27,15 @@ $$;
 
 -- Create a configurable webhook function that can send to different endpoints
 -- It uses the webhook_url parameter to determine where to send the webhook
-CREATE OR REPLACE FUNCTION public.handle_table_change(webhook_url TEXT, auth_token TEXT DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.handle_table_change()
 RETURNS TRIGGER AS $$
 DECLARE
+  webhook_url TEXT := TG_ARGV[0];
+  auth_token TEXT := TG_ARGV[1];
   headers JSONB;
 BEGIN
   -- Build headers with auth token if provided
-  IF auth_token IS NOT NULL THEN
+  IF auth_token IS NOT NULL AND auth_token != '' THEN
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', concat('Bearer ', auth_token)
@@ -51,8 +53,9 @@ BEGIN
       'new_record', CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE row_to_json(NEW) END,
       'old_record', CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE row_to_json(OLD) END
     ),
+    '{}'::jsonb,
     headers,
-    '10000'
+    10000
   );
   RETURN NULL;
 END;

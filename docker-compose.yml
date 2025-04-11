@@ -28,7 +28,7 @@ services:
       - /app/node_modules
       - /app/.next
     environment:
-      # Only include variables that need to reference shared values
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
     depends_on:
       - kong
@@ -47,6 +47,8 @@ services:
       - "8001:8000"
     volumes:
       - ./django:/code # Mount local code for development
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
     depends_on:
       - db
     networks:
@@ -64,7 +66,8 @@ services:
     ports:
       - "3001:3000"
     environment:
-      # Variables that need to reference shared values
+      SUPABASE_URL: http://kong:8000
+      STUDIO_PG_META_URL: http://meta:8080
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_ANON_KEY: ${ANON_KEY}
     depends_on:
@@ -86,6 +89,11 @@ services:
     ports:
       - "8000:8000"
       - "8443:8443"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
     volumes:
       - ./volumes/api:/var/lib/kong:Z
     networks:
@@ -101,6 +109,13 @@ services:
     depends_on:
       - db
     restart: unless-stopped
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: ${POSTGRES_PORT}
+      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
     networks:
       - unfindables-net
 
@@ -112,9 +127,15 @@ services:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - ./volumes/db/init.sql:/docker-entrypoint-initdb.d/init.sql:Z
+      - ./volumes/db/00-pg-net-extension.sql:/docker-entrypoint-initdb.d/00-pg-net-extension.sql:Z
       - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/migrations/98-webhooks.sql:Z
       - ./volumes/db/init_webhooks.sql:/docker-entrypoint-initdb.d/migrations/99-init-webhooks.sql:Z
-      - ./volumes/db/data:/var/lib/postgresql/data:Z
+      - ./volumes/db/data/pgdata:/var/lib/postgresql/data:Z
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: /var/lib/postgresql/data
     networks:
       - unfindables-net
     labels:
