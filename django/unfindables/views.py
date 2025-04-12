@@ -13,20 +13,27 @@ def supabase_webhook(request):
     Webhook handler for Supabase database events.
     Logs incoming webhook events without requiring DB access.
     """
+    logger.info("=============== WEBHOOK REQUEST RECEIVED ===============")
+    logger.info(f"Request Method: {request.method}")
+    logger.info(f"Request Headers: {dict(request.headers)}")
+    logger.info(f"Request Path: {request.path}")
+    logger.info(f"Request META: {request.META.get('REMOTE_ADDR')}")
+    
     if request.method == 'POST':
         try:
             # Parse the incoming webhook payload
             data = json.loads(request.body)
             
             # Log detailed information to console for debugging
-            print(f"=====================================")
-            print(f"WEBHOOK RECEIVED:")
-            print(f"Table: {data.get('table')}")
-            print(f"Schema: {data.get('schema')}")
-            print(f"Operation: {data.get('operation')}")
-            print(f"New Record: {data.get('new_record')}")
-            print(f"Old Record: {data.get('old_record')}")
-            print(f"=====================================")
+            logger.info(f"=====================================")
+            logger.info(f"WEBHOOK PAYLOAD:")
+            logger.info(f"Table: {data.get('table')}")
+            logger.info(f"Schema: {data.get('schema')}")
+            logger.info(f"Operation: {data.get('type')}")
+            logger.info(f"New Record: {data.get('record')}")
+            logger.info(f"Old Record: {data.get('old_record')}")
+            logger.info(f"Raw Data: {data}")
+            logger.info(f"=====================================")
             
             # Return a success response
             return JsonResponse({
@@ -34,11 +41,12 @@ def supabase_webhook(request):
                 'message': f"Webhook for {data.get('operation')} on {data.get('schema')}.{data.get('table')} processed"
             })
             
-        except json.JSONDecodeError:
-            print("ERROR: Invalid JSON in webhook payload")
+        except json.JSONDecodeError as e:
+            logger.error(f"ERROR: Invalid JSON in webhook payload: {e}")
+            logger.error(f"Request body: {request.body}")
             return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
         except Exception as e:
-            print(f"ERROR: {str(e)}")
+            logger.error(f"ERROR in webhook processing: {str(e)}")
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     
     return JsonResponse({'status': 'error', 'message': 'Only POST requests are accepted'}, status=405)

@@ -68,7 +68,6 @@ services:
       - "traefik.http.routers.supabase-api.rule=Host(`api.supabase.localhost`)"
       - "traefik.http.services.supabase-api.loadbalancer.server.port=80"
 
-
   supabase-studio-proxy:
     image: alpine/socat
     command: tcp-listen:80,fork,reuseaddr tcp-connect:supabase-studio:3000
@@ -78,9 +77,6 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.supabase-studio.rule=Host(`studio.supabase.localhost`)"
       - "traefik.http.services.supabase-studio.loadbalancer.server.port=80"
-
-
-
 
 networks:
   unfindables-net:
