@@ -2,8 +2,9 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import ClassVar, Literal
 
-from utils.errors import throw
+from ..errors import throw
 from .tracks_descendants import TracksDescendants
+
 
 @dataclass
 class Trigger:
