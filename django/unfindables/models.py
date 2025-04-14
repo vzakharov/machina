@@ -1,6 +1,6 @@
 from django.db import models
 
-from utils.models.base import BaseModel
+from utils.mixins.base import BaseModel
 
 # web search model
 class WebSearch(BaseModel):

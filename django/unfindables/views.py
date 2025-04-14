@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpRequest
 from django.views.decorators.csrf import csrf_exempt
 import json
 import logging
@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 @csrf_exempt
-def supabase_webhook(request):
+def supabase_webhook(request: HttpRequest):
     """
     Webhook handler for Supabase database events.
     Logs incoming webhook events without requiring DB access.

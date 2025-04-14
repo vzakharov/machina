@@ -1,0 +1,8 @@
+{
+  "typeCheckingMode": "strict",
+  "reportMissingParameterType": "none",
+  "reportUnknownParameterType": "none",
+  // "reportUnusedImport": "none",
+  "include": ["."],
+  "exclude": ["**/node_modules", "**/__pycache__"]
+}
