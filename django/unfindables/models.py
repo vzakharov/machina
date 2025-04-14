@@ -1,7 +1,14 @@
 from django.db import models
 
-from utils.mixins.base import BaseModel
+from utils.mixins.triggerable import Triggerable
 
-# web search model
-class WebSearch(BaseModel):
+class WebSearch(Triggerable):
     query = models.CharField(max_length=255)
+
+    trigger_specs = {
+        'on_insert': {
+            'timing': 'BEFORE',
+            'event': 'INSERT',
+            'func': 'some_function_defined_in_supabase'
+        }
+    }

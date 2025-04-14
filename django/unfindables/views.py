@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.http import JsonResponse, HttpRequest
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -51,7 +50,7 @@ def supabase_webhook(request: HttpRequest):
     
     return JsonResponse({'status': 'error', 'message': 'Only POST requests are accepted'}, status=405)
 
-def test_webhook(request):
+def test_webhook(request: HttpRequest):
     """
     Simple test endpoint to verify the webhook route is accessible.
     """

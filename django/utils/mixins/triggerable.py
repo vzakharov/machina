@@ -5,14 +5,14 @@ from typing import ClassVar, Literal, TypedDict
 from utils.collections import compact
 from utils.errors import throw
 from utils.functional import ensure_is, given
+from utils.mixins.base import BaseModel
 
 from django.core.management.commands.makemigrations import \
     Command as OriginalMakeMigrationsCommand
 from django.db import connection
-from django.db.migrations.migration import Migration
-from django.db.migrations.operations.special import RunSQL
+from django.db.migrations import Migration, RunSQL
+from django.db.migrations.loader import MigrationLoader
 from django.db.migrations.writer import MigrationWriter
-from django.db.models import Model
 
 from .tracks_descendants import TracksDescendants
 
@@ -71,21 +71,51 @@ class Trigger():
     
     def drop_and(self, sql: str | None):
         return ';'.join(compact(self.drop_sql, sql))
+    
+    @dataclass
+    class MigrationInfo():
+        index: int
+        name: str
+
+    @property
+    def previous_migration(self):
+        app_label = self.model._meta.app_label
+        for migration in reversed(
+            sorted(
+                MigrationLoader(connection).disk_migrations.values(),
+                key=lambda migration: migration.name
+            )
+        ):
+            if migration.app_label == app_label:
+                return Trigger.MigrationInfo(
+                    index=int(migration.name.split('_')[0]),
+                    name=migration.name
+                )
+        raise ValueError(f"No previous migration found for {app_label}")
 
     def create_migration(self, existing_body: str | None):
         model_meta = self.model._meta
-        migration_name = '_'.join(compact(
-            existing_body and 'alter',
-            'trigger_for',
-            model_meta.model_name,
-        ))
-        migration = Migration(migration_name, model_meta.app_label)
+        
+        app_label = model_meta.app_label
+        previous = self.previous_migration
+
+        migration = Migration(
+            '_'.join(compact(
+                f"{previous.index + 1:04d}",
+                existing_body and 'alter',
+                'trigger_for',
+                model_meta.model_name,
+            )),
+            app_label
+        )
+        migration.dependencies = [ ( app_label, previous.name ) ]
         migration.operations = [
             RunSQL(
                 sql=self.drop_and(self.sql_body),
                 reverse_sql=self.drop_and(existing_body)
             )
         ]
+        
         writer = MigrationWriter(migration)
         path = writer.path
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -93,9 +123,9 @@ class Trigger():
             f.write(writer.as_string())
         return path
 
-class Triggerable(Model, TracksDescendants):
+class Triggerable(BaseModel, TracksDescendants):
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         abstract = True
 
     trigger_specs: ClassVar[dict[str, TriggerSpec] | None] = None
@@ -123,8 +153,8 @@ class Triggerable(Model, TracksDescendants):
 class TriggerableMakeMigrationsCommand(OriginalMakeMigrationsCommand):
 
     def handle(self, *args, **options):
-        self.make_trigger_migrations()
         super().handle(*args, **options)
+        self.make_trigger_migrations()
 
     def make_trigger_migrations(self):
         for Model in Triggerable.get_descendant_classes():
