@@ -1,6 +1,6 @@
 from django.db import models
 
-from utils.mixins.triggerable import Triggerable
+from utils.mixins.triggers import Triggerable
 
 class WebSearch(Triggerable):
     query = models.CharField(max_length=255)
