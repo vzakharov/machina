@@ -1,4 +1,4 @@
-from utils.mixins.triggers import TriggerableMakeMigrationsCommand
+from utils.powerups.triggers import TriggerableMakeMigrationsCommand
 
 class Command(TriggerableMakeMigrationsCommand):
     pass

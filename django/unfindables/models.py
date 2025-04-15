@@ -1,7 +1,7 @@
 from django.db import models
 
-from utils.mixins.base import BaseModel
-from utils.mixins.triggers import triggers
+from utils.powerups.base import BaseModel
+from utils.powerups.triggers import triggers
 
 @triggers('websearch_created', 'AFTER', 'INSERT')
 class WebSearch(BaseModel):
