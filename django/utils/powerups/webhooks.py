@@ -51,7 +51,7 @@ class WebhookHandler(Generic[TWebhookTargetName]):
 
     TargetModel: type[WebhookTargetBase[TWebhookTargetName]]
 
-    def target(self, name: TWebhookTargetName):
+    def __call__(self, name: TWebhookTargetName):
 
         T = TypeVar('T', bound=models.Model)
 

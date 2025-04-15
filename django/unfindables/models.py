@@ -10,8 +10,8 @@ WebhookTargetName = Literal["django", "nextjs"]
 class WebhookTarget(WebhookTargetBase[WebhookTargetName]):
     pass
 
-webhooks = WebhookHandler(WebhookTarget)
+webhook = WebhookHandler(WebhookTarget)
 
-@webhooks.target('django')
+@webhook('django')
 class WebSearch(BaseModel):
     query = models.CharField(max_length=255)
