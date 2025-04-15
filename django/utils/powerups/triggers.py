@@ -121,6 +121,13 @@ class Trigger():
             f.write(writer.as_string())
         return path
 
+    class MakeMigrations(OriginalMakeMigrationsCommand):
+
+        def handle(self, *args, **options):
+            super().handle(*args, **options)
+            for trigger in all_triggers:
+                trigger.create_migration_if_needed()
+
 all_triggers = empty_list(Trigger)
 
 def trigger(func: str, timing: TriggerTiming, event: TriggerEvent, name: str | None = None):
@@ -132,9 +139,3 @@ def trigger(func: str, timing: TriggerTiming, event: TriggerEvent, name: str | N
         return cls
     return decorator
     
-class TriggerableMakeMigrationsCommand(OriginalMakeMigrationsCommand):
-
-    def handle(self, *args, **options):
-        super().handle(*args, **options)
-        for trigger in all_triggers:
-            trigger.create_migration_if_needed()

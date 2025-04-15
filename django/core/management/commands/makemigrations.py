@@ -1,4 +1,4 @@
-from utils.powerups.triggers import TriggerableMakeMigrationsCommand
+from utils.powerups.triggers import Trigger
 
-class Command(TriggerableMakeMigrationsCommand):
+class Command(Trigger.MakeMigrations):
     pass
