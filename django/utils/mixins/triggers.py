@@ -25,13 +25,13 @@ class TriggerSpec(TypedDict):
 @dataclass
 class Trigger():
 
-    model: type['Triggerable']
+    Model: type['Triggerable']
     name: str
     spec: TriggerSpec
 
     @property
     def table_name(self):
-        return self.model._meta.db_table
+        return self.Model._meta.db_table
     
     @property
     def full_table_name(self):
@@ -79,7 +79,7 @@ class Trigger():
 
     @property
     def previous_migration(self):
-        app_label = self.model._meta.app_label
+        app_label = self.Model._meta.app_label
         for migration in reversed(
             sorted(
                 MigrationLoader(connection).disk_migrations.values(),
@@ -94,7 +94,7 @@ class Trigger():
         raise ValueError(f"No previous migration found for {app_label}")
 
     def create_migration(self, existing_body: str | None):
-        model_meta = self.model._meta
+        model_meta = self.Model._meta
         
         app_label = model_meta.app_label
         previous = self.previous_migration
@@ -143,7 +143,7 @@ class Triggerable(BaseModel, TracksDescendants):
     def get_triggers(cls):
         return [
             Trigger(
-                model=cls,
+                Model=cls,
                 name=trigger_name,
                 spec=trigger_spec
             )
