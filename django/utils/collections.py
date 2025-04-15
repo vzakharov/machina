@@ -2,7 +2,9 @@ from typing import Literal, TypeVar
 
 T = TypeVar('T')
 U = TypeVar('U')
-def compact(*items: T | Literal[False] | Literal[''] |None) -> list[T]:
+Compactable = T | Literal[False, '', 0, None]
+
+def compact(*items: Compactable[T]) -> list[T]:
     return [ item for item in items if item ]
 
 def empty_list(type: type[T]) -> list[T]:

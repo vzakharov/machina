@@ -1,16 +1,13 @@
-import os
 from dataclasses import dataclass
 from typing import Literal, TypeVar
 
 from utils.collections import compact, empty_list
 from utils.functional import ensure_is, given
+from utils.migrations import MigrationHandler
 
 from django.core.management.commands.makemigrations import \
     Command as OriginalMakeMigrationsCommand
 from django.db import connection, models
-from django.db.migrations import Migration, RunSQL
-from django.db.migrations.loader import MigrationLoader
-from django.db.migrations.writer import MigrationWriter
 
 TriggerTiming = Literal['BEFORE', 'AFTER']
 TriggerEvent = Literal['INSERT', 'DELETE', 'UPDATE', 'INSERT OR DELETE', 'INSERT OR UPDATE', 'DELETE OR UPDATE', 'INSERT OR DELETE OR UPDATE']
@@ -70,61 +67,21 @@ class Trigger():
     def drop_and(self, sql: str | None):
         return ';'.join(compact(self.drop_sql, sql))
     
-    @dataclass
-    class MigrationInfo():
-        index: int
-        name: str
-
-    @property
-    def previous_migration(self):
-        app_label = self.Model._meta.app_label
-        for migration in reversed(
-            sorted(
-                MigrationLoader(connection).disk_migrations.values(),
-                key=lambda migration: migration.name
-            )
-        ):
-            if migration.app_label == app_label:
-                return Trigger.MigrationInfo(
-                    index=int(migration.name.split('_')[0]),
-                    name=migration.name
-                )
-        raise ValueError(f"No previous migration found for {app_label}")
-
     def create_migration(self, existing_body: str | None):
-        model_meta = self.Model._meta
-        
-        app_label = model_meta.app_label
-        previous = self.previous_migration
-
-        migration = Migration(
-            '_'.join(compact(
-                f"{previous.index + 1:04d}",
-                existing_body and 'alter',
-                'trigger_for',
-                model_meta.model_name,
-            )),
-            app_label
-        )
-        migration.dependencies = [ ( app_label, previous.name ) ]
-        migration.operations = [
-            RunSQL(
-                sql=self.drop_and(self.sql_body),
-                reverse_sql=self.drop_and(existing_body)
-            )
-        ]
-        
-        writer = MigrationWriter(migration)
-        path = writer.path
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'w') as f:
-            f.write(writer.as_string())
-        return path
+        MigrationHandler(
+            self.Model,
+            prefixes    = [ existing_body and 'alter', 'trigger_for' ],
+            sql         = self.drop_and(self.sql_body),
+            reverse_sql = self.drop_and(existing_body),
+        ).write()
 
     class MakeMigrations(OriginalMakeMigrationsCommand):
 
         def handle(self, *args, **options):
             super().handle(*args, **options)
+            self.create_trigger_migrations()
+
+        def create_trigger_migrations(self):
             for trigger in all_triggers:
                 trigger.create_migration_if_needed()
 
