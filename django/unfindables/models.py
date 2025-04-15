@@ -1,8 +1,17 @@
-from django.db import models
+from typing import Literal
 
 from utils.powerups.base import BaseModel
-from utils.powerups.triggers import triggers
+from utils.powerups.webhooks import WebhookHandler, WebhookTargetBase
 
-@triggers('websearch_created', 'AFTER', 'INSERT')
+from django.db import models
+
+WebhookTargetName = Literal["django", "nextjs"]
+
+class WebhookTarget(WebhookTargetBase[WebhookTargetName]):
+    pass
+
+webhooks = WebhookHandler(WebhookTarget)
+
+@webhooks.target('django')
 class WebSearch(BaseModel):
     query = models.CharField(max_length=255)
