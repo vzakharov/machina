@@ -3,12 +3,13 @@ from dataclasses import dataclass
 from typing import Generic, TypedDict, TypeVar
 
 from utils.functional import ensure_is
+from utils.logging import logger
 from utils.migrations import MigrationHandler
 from utils.powerups.base import WithIntId
 from utils.powerups.triggers import Trigger, TriggerEvent, trigger
-from utils.strings import strip_newlines
+from utils.strings import newlines_to_spaces
 
-from django.db import models
+from django.db import ProgrammingError, models
 
 TWebhookTargetName = TypeVar('TWebhookTargetName', bound=str)
 
@@ -27,7 +28,8 @@ class WebhookTargetBase(Generish[TWebhookTargetName], models.Model, WithIntId):
 # pyright: reportAssignmentType = false
     name: 'models.CharField[TWebhookTargetName]' = models.CharField(max_length=255)
     url = models.URLField()
-    version = models.IntegerField(default=1)
+    # version = models.IntegerField(default=1)
+    # TODO: add back in
 
     env_prefix = 'WEBHOOK_TARGET_'
 
@@ -45,11 +47,11 @@ class WebhookTargetBase(Generish[TWebhookTargetName], models.Model, WithIntId):
     @classmethod
     def get_update_sql(cls, targets: list[Target]):
         table_name = f"public.{cls._meta.db_table}"
-        return strip_newlines(f"""
+        return newlines_to_spaces(f"""
             INSERT INTO {table_name} (name, url)
             VALUES {','.join(
-                f"('{name}','{url}')"
-                for name, url in targets
+                f"('{target['name']}','{target['url']}')"
+                for target in targets
             )}
         """) if targets else f"DELETE FROM {table_name}"
     
@@ -62,16 +64,20 @@ class WebhookTargetBase(Generish[TWebhookTargetName], models.Model, WithIntId):
 
     @classmethod
     def stored_targets(cls):
-        return [Target(
-            name=target.name,
-            url=target.url
-        ) for target in cls.objects.all()]
+        try:
+            return [Target(
+                name=target.name,
+                url=target.url
+            ) for target in cls.objects.all()]
+        except ProgrammingError as e:
+            logger.warning(f'{cls.__name__} table does not exist yet; Apply migrations first')
+            raise e
     
     @classmethod
     def MakeMigrations(cls):
     
         class MakeMigrations(Trigger.MakeMigrations):
-            
+
             def create_trigger_migrations(self):
                 if self.migrations_needed():
                     self.create_target_update_migration()
@@ -85,7 +91,7 @@ class WebhookTargetBase(Generish[TWebhookTargetName], models.Model, WithIntId):
                 new = cls.env_targets()
                 MigrationHandler(
                     cls,
-                    prefixes    = [ 'update' if stored else 'create' ],
+                    prefixes    = [ 'update' if stored else 'populate' ],
                     sql         = cls.get_update_sql(new),
                     reverse_sql = cls.get_update_sql(stored)
                 ).write()
@@ -107,7 +113,7 @@ class WebhookHandler(Generic[TWebhookTargetName]):
     TargetModel: type[WebhookTargetBase[TWebhookTargetName]]
 
     def post_process_sql(self, sql: str):
-        return strip_newlines(sql)
+        return newlines_to_spaces(sql)
 
     def get_function_sql(self, name: TWebhookTargetName):
         return self.post_process_sql(
