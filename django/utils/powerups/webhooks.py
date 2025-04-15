@@ -1,11 +1,14 @@
 import os
 from dataclasses import dataclass
+import re
 from typing import Generic, TypedDict, TypeVar
 
 from utils.functional import ensure_is
 from utils.powerups.base import WithIntId
 
 from django.db import models
+
+from utils.powerups.triggers import TriggerEvent, trigger
 
 TWebhookTargetName = TypeVar('TWebhookTargetName', bound=str)
 
@@ -46,16 +49,36 @@ class WebhookTargetBase(Generish[TWebhookTargetName], models.Model, WithIntId):
         ]).delete()
 
 
+FUNCTION_TEMPLATE = """
+supabase_functions.http_request(
+    (SELECT url FROM public.{table_name} WHERE name = '{target_name}'),
+    'POST',
+    '{{{{"Content-Type":"application/json"}}}}',
+    '{{{{}}}}',
+    '1000'
+)"""
+
 @dataclass
 class WebhookHandler(Generic[TWebhookTargetName]):
 
     TargetModel: type[WebhookTargetBase[TWebhookTargetName]]
 
-    def __call__(self, name: TWebhookTargetName):
+    def post_process_sql(self, sql: str):
+        return re.sub(r'\n\s*', '', sql)
 
-        T = TypeVar('T', bound=models.Model)
+    def get_function_sql(self, name: TWebhookTargetName):
+        return self.post_process_sql(
+            FUNCTION_TEMPLATE.format(
+                table_name=self.TargetModel._meta.db_table,
+                target_name=name
+            )
+        )
 
-        def decorator(cls: type[T]):
-            # to be implemented
-            return cls
-        return decorator
+    def __call__(self, name: TWebhookTargetName, after: TriggerEvent = 'INSERT OR DELETE OR UPDATE'):
+
+        return trigger(
+            func=self.get_function_sql(name),
+            timing='AFTER',
+            event=after,
+            name=name
+        )

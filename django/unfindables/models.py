@@ -12,6 +12,6 @@ class WebhookTarget(WebhookTargetBase[WebhookTargetName]):
 
 webhook = WebhookHandler(WebhookTarget)
 
-@webhook('django')
+@webhook('django', after='INSERT')
 class WebSearch(BaseModel):
     query = models.CharField(max_length=255)

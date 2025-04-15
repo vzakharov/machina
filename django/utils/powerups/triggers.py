@@ -28,7 +28,6 @@ class Trigger():
     def table_name(self):
         return self.Model._meta.db_table
 
-
     @property
     def full_table_name(self):
         return f"public.{self.table_name}"
@@ -124,7 +123,7 @@ class Trigger():
 
 all_triggers = empty_list(Trigger)
 
-def triggers(func: str, timing: TriggerTiming, event: TriggerEvent, name: str | None = None):
+def trigger(func: str, timing: TriggerTiming, event: TriggerEvent, name: str | None = None):
     T = TypeVar('T', bound=models.Model)
     def decorator(cls: type[T]):
         all_triggers.append(
