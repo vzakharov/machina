@@ -1,54 +1,53 @@
 import os
 from dataclasses import dataclass
-from typing import ClassVar, Literal, TypedDict
+from typing import Literal, TypeVar
 
-from utils.collections import compact
-from utils.errors import throw
+from utils.collections import compact, empty_list
 from utils.functional import ensure_is, given
-from utils.mixins.base import BaseModel
 
 from django.core.management.commands.makemigrations import \
     Command as OriginalMakeMigrationsCommand
-from django.db import connection
+from django.db import connection, models
 from django.db.migrations import Migration, RunSQL
 from django.db.migrations.loader import MigrationLoader
 from django.db.migrations.writer import MigrationWriter
 
-from .tracks_descendants import TracksDescendants
-
-
-class TriggerSpec(TypedDict):
-    timing: Literal['BEFORE', 'AFTER']
-    event: Literal['INSERT', 'DELETE', 'UPDATE', 'INSERT OR DELETE', 'INSERT OR UPDATE', 'DELETE OR UPDATE', 'INSERT OR DELETE OR UPDATE']
-    func: str
+TriggerTiming = Literal['BEFORE', 'AFTER']
+TriggerEvent = Literal['INSERT', 'DELETE', 'UPDATE', 'INSERT OR DELETE', 'INSERT OR UPDATE', 'DELETE OR UPDATE', 'INSERT OR DELETE OR UPDATE']
 
 @dataclass
 class Trigger():
 
-    Model: type['Triggerable']
-    name: str
-    spec: TriggerSpec
+    Model: type['models.Model']
+    func: str
+    timing: TriggerTiming
+    event: TriggerEvent
+    name: str | None
 
     @property
     def table_name(self):
         return self.Model._meta.db_table
-    
+
+
     @property
     def full_table_name(self):
         return f"public.{self.table_name}"
 
     @property
     def sql_name(self):
-        return f"{self.table_name}_{self.name}"
+        return '_'.join(compact(
+            self.table_name,
+            self.name
+        ))
     
     @property
     def sql_body(self):
         return "CREATE TRIGGER {} {} {} ON {} FOR EACH ROW EXECUTE FUNCTION {}".format(
             self.sql_name,
-            self.spec['timing'],
-            self.spec['event'],
+            self.timing,
+            self.event,
             self.full_table_name,
-            self.spec['func']
+            self.func
         )
     
     @property
@@ -123,40 +122,20 @@ class Trigger():
             f.write(writer.as_string())
         return path
 
-class Triggerable(BaseModel, TracksDescendants):
+all_triggers = empty_list(Trigger)
 
-    class Meta(BaseModel.Meta):
-        abstract = True
-
-    trigger_specs: ClassVar[dict[str, TriggerSpec] | None] = None
-
-    @classmethod
-    def get_trigger_specs(cls):
-        return cls.trigger_specs or throw(
-            NotImplementedError(
-                f"{cls.__name__} must either define class variable 'trigger_specs' "
-                f"or override the classmethod 'get_trigger_specs'."
-            )
+def triggers(func: str, timing: TriggerTiming, event: TriggerEvent, name: str | None = None):
+    T = TypeVar('T', bound=models.Model)
+    def decorator(cls: type[T]):
+        all_triggers.append(
+            Trigger(cls, func, timing, event, name)
         )
-    
-    @classmethod
-    def get_triggers(cls):
-        return [
-            Trigger(
-                Model=cls,
-                name=trigger_name,
-                spec=trigger_spec
-            )
-            for trigger_name, trigger_spec in cls.get_trigger_specs().items()
-        ]
+        return cls
+    return decorator
     
 class TriggerableMakeMigrationsCommand(OriginalMakeMigrationsCommand):
 
     def handle(self, *args, **options):
         super().handle(*args, **options)
-        self.make_trigger_migrations()
-
-    def make_trigger_migrations(self):
-        for Model in Triggerable.get_descendant_classes():
-            for trigger in Model.get_triggers():
-                trigger.create_migration_if_needed()
+        for trigger in all_triggers:
+            trigger.create_migration_if_needed()
