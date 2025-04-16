@@ -1,4 +1,4 @@
-from unfindables.models import WebhookTarget
+from utils.powerups.triggers import Trigger
 
-class Command(WebhookTarget.MakeMigrations()):
+class Command(Trigger.MakeMigrations):
     pass

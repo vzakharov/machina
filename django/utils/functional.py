@@ -28,3 +28,14 @@ def given(
     default: U | Callable[[], U] | None = None
 ):
     return func(value) if value else default() if callable(default) else default
+
+Returns = Callable[[], T]
+
+Inferable = T | Returns[T]
+
+def infer(inferable: Inferable[T]) -> T:
+    return (
+        inferable()
+        if callable(inferable)
+        else inferable
+    )

@@ -1,17 +1,46 @@
-from typing import Literal
+# from typing import Literal
 
+from utils.migrations import Migrator
 from utils.powerups.base import BaseModel
-from utils.powerups.webhooks import WebhookHandler, WebhookTargetBase
+from utils.powerups.triggers import trigger
+# from utils.powerups.webhooks import WebhookHandler, WebhookTargetBase
 
 from django.db import models
 
-WebhookTargetName = Literal["django", "nextjs"]
+from utils.strings import newlines_to_spaces
 
-class WebhookTarget(WebhookTargetBase[WebhookTargetName]):
-    pass
+# WebhookTargetName = Literal["django", "nextjs"]
 
-webhook = WebhookHandler(WebhookTarget)
+# class WebhookTarget(WebhookTargetBase[WebhookTargetName]):
+#     pass
 
-@webhook('django', after='INSERT')
+# webhook = WebhookHandler(WebhookTarget)
+
+# @webhook('django', after='INSERT')
+
+class DjangoWebhookMigrator(Migrator):
+
+    @classmethod
+    def get_sql(cls):
+        import os
+
+        return newlines_to_spaces("""
+            supabase_functions.http_request(
+                '{}',
+                'POST',
+                '{{{{"Content-Type":"application/json"}}}}',
+                '{{{{}}}}',
+                '1000'
+            )
+        """).format(
+            os.environ['WEBHOOK_TARGET_DJANGO']
+        )
+
+@trigger(
+    MigratorClass=DjangoWebhookMigrator,
+    timing='AFTER',
+    event='INSERT',
+    name='django'
+)
 class WebSearch(BaseModel):
     query = models.CharField(max_length=255)

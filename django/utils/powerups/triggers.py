@@ -3,7 +3,7 @@ from typing import Literal, TypeVar
 
 from utils.collections import compact, empty_list
 from utils.functional import ensure_is, given
-from utils.migrations import MigrationHandler
+from utils.migrations import MigrationHandler, Migrator
 
 from django.core.management.commands.makemigrations import \
     Command as OriginalMakeMigrationsCommand
@@ -16,7 +16,7 @@ TriggerEvent = Literal['INSERT', 'DELETE', 'UPDATE', 'INSERT OR DELETE', 'INSERT
 class Trigger():
 
     Model: type['models.Model']
-    func: str
+    MigratorClass: type[Migrator]
     timing: TriggerTiming
     event: TriggerEvent
     name: str | None
@@ -43,7 +43,7 @@ class Trigger():
             self.timing,
             self.event,
             self.full_table_name,
-            self.func
+            self.MigratorClass.get_sql()
         )
     
     @property
@@ -70,9 +70,10 @@ class Trigger():
     def create_migration(self, existing_body: str | None):
         MigrationHandler(
             self.Model,
-            prefixes    = [ existing_body and 'alter', 'trigger_for' ],
-            sql         = self.drop_and(self.sql_body),
-            reverse_sql = self.drop_and(existing_body),
+            MigratorClass   = self.MigratorClass,
+            prefixes        = [ existing_body and 'alter', 'trigger_for' ],
+            # sql         = self.drop_and(self.sql_body),
+            # reverse_sql = self.drop_and(existing_body),
         ).write()
 
     class MakeMigrations(OriginalMakeMigrationsCommand):
@@ -87,12 +88,11 @@ class Trigger():
 
 all_triggers = empty_list(Trigger)
 
-def trigger(func: str, timing: TriggerTiming, event: TriggerEvent, name: str | None = None):
+def trigger(MigratorClass: type[Migrator], timing: TriggerTiming, event: TriggerEvent, name: str | None = None):
     T = TypeVar('T', bound=models.Model)
     def decorator(cls: type[T]):
         all_triggers.append(
-            Trigger(cls, func, timing, event, name)
+            Trigger(cls, MigratorClass, timing, event, name)
         )
         return cls
     return decorator
-    

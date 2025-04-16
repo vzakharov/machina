@@ -5,10 +5,12 @@ from typing import Generic, TypeVar
 from utils.collections import Compactable, compact
 
 from django.db import connection, models
-from django.db.migrations import RunSQL
+from django.db.migrations import RunPython
 from django.db.migrations.loader import MigrationLoader
 from django.db.migrations.migration import Migration
 from django.db.migrations.writer import MigrationWriter
+from django.apps.registry import Apps
+from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 
 
 @dataclass
@@ -18,13 +20,36 @@ class MigrationInfo():
 
 TModel = TypeVar('TModel', bound=models.Model)
 
+# #pyright: reportUndefinedVariable=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
+# # because we're using this as a stub to inject into the migration file (uppercases will be replaced with actual values)
+# def migrator(fn: Returns[str]):
+#     def migrate(apps: Apps, schema_editor: BaseDatabaseSchemaEditor):
+#         sql_body = fn()
+#         from django.db import connection
+#         with connection.cursor() as cursor:
+#             cursor.execute(sql_body)
+#     return migrate
+
+class Migrator():
+
+    @classmethod
+    def get_sql(cls) -> str:
+        ...
+
+    @classmethod
+    def migrate(cls, apps: Apps, schema_editor: BaseDatabaseSchemaEditor):
+        sql = cls.get_sql()
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute(sql)
+
 @dataclass
 class MigrationHandler(Generic[TModel]):
 
     Model: type[TModel]
     prefixes: list[Compactable[str]]
-    sql: str
-    reverse_sql: str
+    MigratorClass: type[Migrator]
+    # reverse_sql: Returns[str]
 
     @property
     def last_migration(self):
@@ -55,9 +80,13 @@ class MigrationHandler(Generic[TModel]):
         )
         migration.dependencies = [ ( meta.app_label, last.name ) ]
         migration.operations = [
-            RunSQL(
-                sql=self.sql,
-                reverse_sql=self.reverse_sql
+            # RunSQL(
+            #     sql=self.sql,
+            #     reverse_sql=self.reverse_sql
+            # )
+            RunPython(
+                code=self.MigratorClass.migrate,
+                # reverse_code=migrator(self.reverse_sql)
             )
         ]
         writer = MigrationWriter(migration)
