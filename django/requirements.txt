@@ -1,6 +1,7 @@
 asgiref==3.4.1
 Django==3.2.25
 django-types
+ipython>=9.1.0
 psycopg2-binary==2.9.9
 pytz==2025.2
 sqlparse==0.4.4
