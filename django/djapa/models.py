@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import ClassVar, Literal
 from django.db import connection, models
 
 from utils.strings import newlines_to_spaces
@@ -45,17 +45,6 @@ class Trigger(models.Model):
         trigger_name = none(str),
         table_name = none(str),
     ):
-        """
-        Create a new trigger for a model.
-
-        Args:
-            timing: The timing of the trigger.
-            events: The events that will trigger the trigger.
-            Model: The model that the trigger is for.
-
-        Returns:
-            List of triggers created (if there were several events, several triggers will be created)
-        """
         table_name = table_name or f"public.{Model._meta.db_table}"
         trigger_name = trigger_name or (
             f'{table_name}_{int(last_trigger.trigger_name.split('_')[-1]) + 1}'
@@ -77,3 +66,22 @@ class Trigger(models.Model):
             """))
 
             return list(cls.objects.filter(trigger_name=trigger_name))
+    
+    all: ClassVar[list['Trigger']] = []
+
+    @classmethod
+    def setup(cls,
+        timing: TriggerTiming,
+        events: list[TriggerEvent],
+        statement: str,
+        trigger_name = none(str),
+        table_name = none(str),
+    ):
+        def decorator(cls: type[models.Model]):
+            Trigger.all.extend(
+                Trigger.create(timing, events, cls, statement, trigger_name, table_name)
+            )
+            return cls
+        return decorator
+    
+trigger = Trigger.setup # just a shortcut for easier reading/setting
