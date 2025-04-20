@@ -35,6 +35,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'django']
 
 INSTALLED_APPS = [
     'core',
+    'djapa',
 
     'django.contrib.admin',
     'django.contrib.auth',
