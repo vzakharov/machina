@@ -1,7 +1,7 @@
 # from typing import Literal
 
 from typing import Literal
-from djapa.webhooks import WebhookDecorator
+from supa.webhooks import WebhookDecorator
 from utils.powerups.base import BaseModel
 # from utils.powerups.webhooks import WebhookHandler, WebhookTargetBase
 
@@ -12,6 +12,6 @@ WebhookTargetName = Literal["django", "nextjs"]
 
 webhook = WebhookDecorator[WebhookTargetName]()
 
-@webhook('django')
+@webhook('nextjs')
 class WebSearch(BaseModel):
     query = models.CharField(max_length=255)
