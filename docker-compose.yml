@@ -18,7 +18,7 @@ services:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
     networks:
       - unfindables-net
-      - supabase_network
+      - supabase_default
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nextjs.rule=Host(`unfindables.localhost`)"
@@ -37,7 +37,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
     networks:
       - unfindables-net
-      - supabase_network
+      - supabase_default
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.django.rule=Host(`django.unfindables.localhost`)"
@@ -57,14 +57,14 @@ services:
       - "--entrypoints.web.address=:80"
     networks:
       - unfindables-net
-      - supabase_network
+      - supabase_default
 
   # Proxy services for Supabase containers
   supabase-api-proxy:
     image: alpine/socat
     command: tcp-listen:80,fork,reuseaddr tcp-connect:supabase-kong:8000
     networks:
-      - supabase_network
+      - supabase_default
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.supabase-api.rule=Host(`api.supabase.localhost`)"
@@ -74,7 +74,7 @@ services:
     image: alpine/socat
     command: tcp-listen:80,fork,reuseaddr tcp-connect:supabase-studio:3000
     networks:
-      - supabase_network
+      - supabase_default
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.supabase-studio.rule=Host(`studio.supabase.localhost`)"
@@ -83,5 +83,5 @@ services:
 networks:
   unfindables-net:
     driver: bridge
-  supabase_network:
+  supabase_default:
     external: true 
