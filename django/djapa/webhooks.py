@@ -1,6 +1,7 @@
 import os
 from typing import Generic, TypeVar
 
+from utils.errors import throw
 from utils.strings import newlines_to_spaces
 
 from .models import trigger
@@ -14,12 +15,17 @@ class WebhookDecorator(Generic[TTargetName]):
         return trigger(
             timing='AFTER',
             events=events or ('INSERT',),
-            statement=newlines_to_spaces(f"""
+            statement=newlines_to_spaces("""
                 supabase_functions.http_request(
-                    '{os.getenv(f'WEBHOOK_TARGET_{name.upper()}')}',
+                    '{}',
                     'POST',
                     '{{{{"Content-Type":"application/json"}}}}',
                     '{{{{}}}}',
                     '1000'
-            )"""),
+            )""".format(
+                os.getenv(
+                    ( env_name := f'WEBHOOK_TARGET_{name.upper()}' )
+                    or throw(f'{env_name} is not set')
+                )
+            )),
         )
