@@ -1,14 +1,13 @@
-from typing import Any, Literal, TypeGuard
+from typing import Any, TypeGuard
 
-from utils.functional import tap
 from utils.logging import info
 from utils.strings import newlines_to_spaces
 from utils.typing import none
 
 from django.db import connection, models
 
-TriggerTiming = Literal['BEFORE', 'AFTER']
-TriggerEvent = Literal['INSERT', 'DELETE', 'UPDATE']
+from .types import TriggerEvent, TriggerTiming
+
 
 class PublicTriggerManager(models.Manager['Trigger']):
 
@@ -60,13 +59,14 @@ class Trigger(models.Model, metaclass = TriggerMeta):
     @classmethod
     def create(cls,
         timing: TriggerTiming,
-        events: list[TriggerEvent],
+        events: tuple[TriggerEvent, ...],
         Model: type[models.Model],
         statement: str,
         trigger_name = none(str),
         table_name = none(str),
     ):
-        table_name = table_name or f"public.{Model._meta.db_table}"
+        table_name = Model._meta.db_table
+        full_table_name = f"public.{table_name}"
         trigger_name = trigger_name or (
             f'{table_name}_{int(last_trigger.trigger_name.split('_')[-1]) + 1}'
             if ( 
@@ -76,12 +76,13 @@ class Trigger(models.Model, metaclass = TriggerMeta):
                     .first() 
             ) else f'{table_name}_1'
         )
+        events_string = ' OR '.join(events)
 
         with connection.cursor() as cursor:
 
             cursor.execute(newlines_to_spaces(f"""
                 CREATE TRIGGER {trigger_name}
-                {timing} {events} ON {table_name}
+                {timing} {events_string} ON {full_table_name}
                 FOR EACH ROW
                 EXECUTE FUNCTION {statement}
             """))
@@ -110,20 +111,20 @@ class Trigger(models.Model, metaclass = TriggerMeta):
     @classmethod
     def setup(cls,
         timing: TriggerTiming,
-        events: list[TriggerEvent],
+        events: tuple[TriggerEvent, ...],
         statement: str,
         trigger_name = none(str),
         table_name = none(str),
     ):
         def decorator(cls: type[models.Model]):
-            return tap(
-                Trigger.create(timing, events, cls, statement, trigger_name, table_name),
-                lambda new_triggers: info('Created {} triggers for {} as {}'.format(
-                    len(new_triggers),
-                    cls._meta.db_table,
-                    new_triggers[0].trigger_name,
-                ))
-            )
+            new_triggers = Trigger.create(timing, events, cls, statement, trigger_name, table_name)
+            info('Created {} triggers for {} as {}: {}'.format(
+                len(new_triggers),
+                cls._meta.db_table,
+                new_triggers[0].trigger_name,
+                new_triggers[0].action_statement
+            ))
+            return cls
         return decorator
     
 trigger = Trigger.setup # just a shortcut for easier reading/setting
