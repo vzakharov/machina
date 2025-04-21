@@ -39,3 +39,7 @@ def infer(inferable: Inferable[T]) -> T:
         if callable(inferable)
         else inferable
     )
+
+def tap(value: T, func: Callable[[T], Any]):
+    func(value)
+    return value
