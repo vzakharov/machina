@@ -14,7 +14,7 @@ class WebhookDecorator(Generic[TTargetName]):
     def __call__(self, name: TTargetName, *events: TriggerEvent):
         return trigger(
             timing='AFTER',
-            events=events or ('INSERT',),
+            events=events or ('INSERT', 'DELETE', 'UPDATE'), # default to all events
             statement=newlines_to_spaces("""
                 supabase_functions.http_request(
                     '{}',
@@ -28,3 +28,5 @@ class WebhookDecorator(Generic[TTargetName]):
                 ) or throw(f'{env_name} is not set')
             )),
         )
+    
+webhook = WebhookDecorator[str]() # the simplest case if you don't want to type the target name

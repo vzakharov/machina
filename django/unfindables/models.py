@@ -10,11 +10,8 @@ from django.db import models
 
 WebhookTargetName = Literal["django", "nextjs"]
 
-class Webhook(WebhookDecorator[WebhookTargetName]):
-    pass
+webhook = WebhookDecorator[WebhookTargetName]()
 
-webhook = Webhook()
-
-@webhook('django', 'INSERT')
+@webhook('django')
 class WebSearch(BaseModel):
     query = models.CharField(max_length=255)
