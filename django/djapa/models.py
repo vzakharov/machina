@@ -1,5 +1,6 @@
 from typing import Any, TypeGuard
 
+from utils.functional import tap
 from utils.logging import info
 from utils.strings import newlines_to_spaces
 from utils.typing import none
@@ -87,7 +88,16 @@ class Trigger(models.Model, metaclass = TriggerMeta):
                 EXECUTE FUNCTION {statement}
             """))
 
-            return list(cls.objects.filter(trigger_name=trigger_name))
+
+            return tap(
+                list(cls.objects.filter(trigger_name=trigger_name)),
+                lambda new_triggers: info('Created {} triggers for {} as {}: {}'.format(
+                    len(new_triggers),
+                    cls._meta.db_table,
+                    new_triggers[0].trigger_name,
+                    new_triggers[0].action_statement
+                ))
+            )
     
     def drop(self, raise_if_missing = False):
         with connection.cursor() as cursor:
@@ -117,13 +127,7 @@ class Trigger(models.Model, metaclass = TriggerMeta):
         table_name = none(str),
     ):
         def decorator(cls: type[models.Model]):
-            new_triggers = Trigger.create(timing, events, cls, statement, trigger_name, table_name)
-            info('Created {} triggers for {} as {}: {}'.format(
-                len(new_triggers),
-                cls._meta.db_table,
-                new_triggers[0].trigger_name,
-                new_triggers[0].action_statement
-            ))
+            Trigger.create(timing, events, cls, statement, trigger_name, table_name)
             return cls
         return decorator
     
