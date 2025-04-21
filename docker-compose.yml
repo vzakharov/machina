@@ -12,6 +12,7 @@ services:
       # Add node_modules volume to prevent conflicts with host node_modules
       - /app/node_modules
       - /app/.next
+    env_file: .env
     environment:
       NEXT_PUBLIC_SUPABASE_URL: http://api.supabase.localhost
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
@@ -31,6 +32,7 @@ services:
       - "8001:8000"
     volumes:
       - ./django:/code # Mount local code for development
+    env_file: .env
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
     networks:

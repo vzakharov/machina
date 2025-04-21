@@ -25,7 +25,6 @@ class WebhookDecorator(Generic[TTargetName]):
             )""".format(
                 os.getenv(
                     ( env_name := f'WEBHOOK_TARGET_{name.upper()}' )
-                    or throw(f'{env_name} is not set')
-                )
+                ) or throw(f'{env_name} is not set')
             )),
         )

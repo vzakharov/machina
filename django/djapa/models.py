@@ -91,12 +91,14 @@ class Trigger(models.Model, metaclass = TriggerMeta):
 
             return tap(
                 list(cls.objects.filter(trigger_name=trigger_name)),
-                lambda new_triggers: info('Created {} triggers for {} as {}: {}'.format(
-                    len(new_triggers),
-                    cls._meta.db_table,
-                    new_triggers[0].trigger_name,
-                    new_triggers[0].action_statement
-                ))
+                lambda new_triggers: (
+                    info('Created {} triggers for {} as {}: {}'.format(
+                        len(new_triggers),
+                        cls._meta.db_table,
+                        new_triggers[0].trigger_name,
+                        new_triggers[0].action_statement
+                    ))
+                )
             )
     
     def drop(self, raise_if_missing = False):
