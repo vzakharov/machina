@@ -1,4 +1,4 @@
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 
 from utils.django import DynamicField
 
@@ -21,25 +21,27 @@ class Eloable(models.Model):
 class TestPlayer(Eloable):
     DEFAULT_ELO = 1200.0
 
-TEloableModel = TypeVar('TEloableModel', bound = type[Eloable])
+TPlayer = TypeVar('TPlayer', bound = Eloable)
 
-def GameModel(PlayerModel: TEloableModel): # pyright: ignore[reportInvalidTypeVarUse]
+def GameAmong(PlayerModel: type[TPlayer]): # pyright: ignore[reportInvalidTypeVarUse]
 
-    class GameModel(models.Model):
+    P = TypeVar('P', bound = Eloable)
+
+    class GenericBase(Generic[P]):
+        players: 'models.ManyToManyField[P, Any]'
+        winner: 'models.ForeignKey[P]'
+
+    class GameAmong(models.Model, GenericBase[P]):
 
         class Meta:
             abstract = True
 
-        players: 'models.ManyToManyField[TEloableModel, Any]' = ( # pyright: ignore[reportInvalidTypeArguments]
-            models.ManyToManyField(PlayerModel.__name__, related_name='games') 
-        )
-        winner: 'models.ForeignKey[TEloableModel]' = ( # pyright: ignore[reportInvalidTypeArguments]
-            models.ForeignKey(PlayerModel.__name__, related_name='games_won', on_delete=models.CASCADE)
-        )
+        players = models.ManyToManyField(PlayerModel.__name__, related_name='games') 
+        winner = models.ForeignKey(PlayerModel.__name__, related_name='games_won', on_delete=models.CASCADE)
 
-    return GameModel
+    return GameAmong[TPlayer]
 
-class TestGame(GameModel(TestPlayer)):
+class TestGame(GameAmong(TestPlayer)):
     
-    def __str__(self) -> str:
-        return f'{self.players.first()} vs {self.players.last()}'
+    def get_players(self):
+        return list(self.players.all())
