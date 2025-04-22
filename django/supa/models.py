@@ -1,11 +1,11 @@
 from typing import Any, TypeGuard
 
-from utils.functional import tap
-from utils.logging import info
+from utils.logging import info, warning
 from utils.strings import newlines_to_spaces
 from utils.typing import none
 
 from django.db import connection, models
+from django.db.utils import ProgrammingError
 
 from .types import TriggerEvent, TriggerTiming
 
@@ -79,27 +79,26 @@ class Trigger(models.Model, metaclass = TriggerMeta):
         )
         events_string = ' OR '.join(events)
 
-        with connection.cursor() as cursor:
+        try:
+            with connection.cursor() as cursor:
 
-            cursor.execute(newlines_to_spaces(f"""
-                CREATE TRIGGER {trigger_name}
-                {timing} {events_string} ON {full_table_name}
-                FOR EACH ROW
-                EXECUTE FUNCTION {statement}
-            """))
+                cursor.execute(newlines_to_spaces(f"""
+                    CREATE TRIGGER {trigger_name}
+                    {timing} {events_string} ON {full_table_name}
+                    FOR EACH ROW
+                    EXECUTE FUNCTION {statement}
+                """))
 
 
-            return tap(
-                list(cls.objects.filter(trigger_name=trigger_name)),
-                lambda new_triggers: (
-                    info('Created {} triggers for {} as {}: {}'.format(
-                        len(new_triggers),
-                        cls._meta.db_table,
-                        new_triggers[0].trigger_name,
-                        new_triggers[0].action_statement
-                    ))
-                )
-            )
+                new_triggers = list(cls.objects.filter(trigger_name=trigger_name))
+                info('Created {} triggers for {} as {}: {}'.format(
+                    len(new_triggers),
+                    cls._meta.db_table,
+                    new_triggers[0].trigger_name,
+                    new_triggers[0].action_statement
+                ))
+        except ProgrammingError as e:
+            warning(f'Error creating trigger {trigger_name}, skipping: {e}')
     
     def drop(self, raise_if_missing = False):
         with connection.cursor() as cursor:
