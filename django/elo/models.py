@@ -18,30 +18,32 @@ class Eloable(models.Model):
         lambda Field, Model: Field(default=Model.DEFAULT_ELO)
     )
 
+    @classmethod
+    def get_game_model(cls):
+
+        TPlayer = TypeVar('TPlayer', bound = Eloable)
+
+        class GenericBase(Generic[TPlayer]):
+            players: 'models.ManyToManyField[TPlayer, Any]'
+            winner: 'models.ForeignKey[TPlayer]'
+
+        class Game(models.Model, GenericBase[TPlayer]):
+
+            class Meta:
+                abstract = True
+
+            players = models.ManyToManyField(cls.__name__, related_name='games')
+            winner = models.ForeignKey(cls.__name__, related_name='games_won', on_delete=models.CASCADE)
+
+        return Game[cls]
+
 class TestPlayer(Eloable):
     DEFAULT_ELO = 1200.0
 
-TPlayer = TypeVar('TPlayer', bound = Eloable)
+    name = models.CharField(max_length=255)
 
-def GameAmong(PlayerModel: type[TPlayer]): # pyright: ignore[reportInvalidTypeVarUse]
+class TestGame(TestPlayer.get_game_model()):
+    pass
 
-    P = TypeVar('P', bound = Eloable)
-
-    class GenericBase(Generic[P]):
-        players: 'models.ManyToManyField[P, Any]'
-        winner: 'models.ForeignKey[P]'
-
-    class GameAmong(models.Model, GenericBase[P]):
-
-        class Meta:
-            abstract = True
-
-        players = models.ManyToManyField(PlayerModel.__name__, related_name='games') 
-        winner = models.ForeignKey(PlayerModel.__name__, related_name='games_won', on_delete=models.CASCADE)
-
-    return GameAmong[TPlayer]
-
-class TestGame(GameAmong(TestPlayer)):
-    
-    def get_players(self):
-        return list(self.players.all())
+    def __str__(self):
+        return ' vs '.join(player.name for player in self.players.all())
