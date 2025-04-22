@@ -18,8 +18,6 @@ def issubmodel(cls: type[models.Model], model: TModel) -> TypeGuard[TModel]:
 
 TField = TypeVar('TField', bound = 'models.Field[Any, Any]')
 
-SimpleFloatField = cast('type[models.FloatField[float]]', models.FloatField)
-
 def DynamicField(
     FieldBaseClass: type[TField],
     model_factory: Callable[[], TModel],
