@@ -1,8 +1,6 @@
 from django.db import models
 
-from utils.django import define_custom_default_field
-
-EloField = define_custom_default_field(lambda: Eloable, lambda cls: cls.DEFAULT_ELO)
+from utils.django import SimpleFloatField, DynamicField
 
 class Eloable(models.Model):
 
@@ -12,4 +10,11 @@ class Eloable(models.Model):
     DEFAULT_ELO = 1000.0
     K_FACTOR = 32.0
 
-    elo = EloField()
+    elo = DynamicField(
+        SimpleFloatField, lambda: Eloable,
+        lambda Field, Model: Field(default=Model.DEFAULT_ELO)
+    )
+
+class TestModel(Eloable):
+
+    DEFAULT_ELO = 1200.0

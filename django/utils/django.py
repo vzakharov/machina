@@ -1,10 +1,10 @@
 from types import UnionType
-from typing import TYPE_CHECKING, Any, Callable, TypeGuard, TypeVar
+from typing import Any, Callable, TypeGuard, TypeVar, cast
 
 from django.db.migrations.state import StateApps
 
 from utils.typing import literal_values
-
+from utils.logging import debug
 from django.db import models
 
 
@@ -16,28 +16,26 @@ TModel = TypeVar('TModel', bound = type[models.Model])
 def issubmodel(cls: type[models.Model], model: TModel) -> TypeGuard[TModel]:
     return issubclass(cls, model)
 
+TField = TypeVar('TField', bound = 'models.Field[Any, Any]')
 
-def define_custom_default_field(
+SimpleFloatField = cast('type[models.FloatField[float]]', models.FloatField)
+
+def DynamicField(
+    FieldBaseClass: type[TField],
     model_factory: Callable[[], TModel],
-    default_factory: Callable[[TModel],
-    float]
-):
+    field_factory: Callable[[type[TField], TModel], TField]
+):    
+    class DynamicField(FieldBaseClass):
 
-    class CustomDefaultField(models.FloatField[float] if TYPE_CHECKING else models.FloatField):
-
+        @debug        
         def contribute_to_class(self, cls: type[models.Model], name: str, *args: Any, **kwargs: Any):
             meta = cls._meta
-            if not meta.abstract and not isinstance(meta.apps, StateApps):
-                Model = model_factory()
-                if not issubmodel(cls, Model):
-                    raise ValueError("Custom default field must be used on a subclass of {}".format(Model.__name__))
-                self.default = default_factory(cls)
-            super().contribute_to_class(cls, name, *args, **kwargs)
-
-        def deconstruct(self, *args: Any, **kwargs: Any):
-            name, path, args, kwargs = super().deconstruct(*args, **kwargs)
-            kwargs['default'] = self.default
-            path = 'django.db.models.FloatField'
-            return name, path, args, kwargs
-
-    return CustomDefaultField
+            if meta.abstract or isinstance(meta.apps, StateApps):
+                return super().contribute_to_class(cls, name, *args, **kwargs)
+            Model = model_factory()
+            if not issubmodel(cls, Model):
+                raise ValueError(f"Dynamic field must be used on a subclass of {Model.__name__}")
+            field = field_factory(FieldBaseClass, cls)
+            field.contribute_to_class(cls, name, *args, **kwargs)
+    
+    return cast(TField, DynamicField())
