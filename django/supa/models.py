@@ -32,7 +32,7 @@ class Trigger(models.Model, metaclass = TriggerMeta):
         managed = False
         db_table = 'information_schema"."triggers'
 
-    objects = PublicTriggerManager()
+    objects = PublicTriggerManager() # pyright: ignore[reportAssignmentType]
 
     trigger_catalog = models.CharField(max_length=255)
     trigger_schema = models.CharField(max_length=255)
@@ -40,8 +40,7 @@ class Trigger(models.Model, metaclass = TriggerMeta):
     # This is wrong: trigger_name is NOT unique. This is just a hack to make Django happy (otherwise it is looking for an `id` field)
     # But thing is, none of the fields in the view are unique, so ¯\_(ツ)_/¯
 
-# pyright: reportAssignmentType = false
-    event_manipulation: 'models.CharField[TriggerEvent]' = models.CharField(max_length=32)
+    event_manipulation: 'models.CharField[TriggerEvent]' = models.CharField(max_length=32) # pyright: ignore[reportAssignmentType]
     event_object_catalog = models.CharField(max_length=255)
     event_object_schema = models.CharField(max_length=255)
     event_object_table = models.CharField(max_length=255)
@@ -49,8 +48,7 @@ class Trigger(models.Model, metaclass = TriggerMeta):
     action_condition = models.CharField(max_length=1024, null=True)
     action_statement = models.TextField()
     action_orientation = models.CharField(max_length=32)
-# pyright: reportAssignmentType = false
-    action_timing: 'models.CharField[TriggerTiming]' = models.CharField(max_length=32)
+    action_timing: 'models.CharField[TriggerTiming]' = models.CharField(max_length=32) # pyright: ignore[reportAssignmentType]
     action_reference_old_table = models.CharField(max_length=255, null=True)
     action_reference_new_table = models.CharField(max_length=255, null=True)
     action_reference_old_row = models.CharField(max_length=255, null=True)
