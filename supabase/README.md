@@ -1,6 +1,8 @@
 # Supabase Docker Configuration
 
-This directory contains a copy of the Docker configuration files from the official Supabase repository, allowing you to run Supabase locally.
+This directory contains a copy of the Docker configuration files from the official Supabase repository, allowing you to run Supabase locally. Ideally, you don’t want to change _anything_ in this directory, as your changes will be lost when you update the Docker configuration (see **Updating** below).
+
+Instead, you want to run `docker-compose up` from within `supabase/docker` to start Supabase, and then use the created container network from within your project to connect to Supabase. The existing `../docker-compose.yml` in the repo root already supports this, and the `../launch.sh` script will also start Supabase for you.
 
 ## What's Included
 
