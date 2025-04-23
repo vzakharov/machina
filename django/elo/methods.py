@@ -1,4 +1,4 @@
-from elo.models import Game, TPlayer
+from elo.models import GameBase, TPlayer
 
 from django.db import transaction
 
@@ -8,7 +8,7 @@ def get_win_probability(player: TPlayer, *all_players: TPlayer):
     # We don't actually expect there to be more than 2 players in a game, but it doesn't hurt to support more
     return 1.0 / ( 1.0 + 10 ** ((average_elo - player.elo) / type(player).DIVISOR) )
 
-def update_elos_after_game(game: Game[TPlayer]):
+def update_elos_after_game(game: GameBase[TPlayer]):
     if game.processed:
         raise ValueError(f'{game} is already processed')
     winner = game.winner

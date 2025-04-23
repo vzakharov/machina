@@ -6,7 +6,7 @@ from utils.powerups.inheritance_protection import Uninheritable
 from django.db import models
 
 
-class Eloable(models.Model):
+class PlayerBase(models.Model):
 
     class Meta:
         abstract = True
@@ -16,16 +16,16 @@ class Eloable(models.Model):
     DIVISOR = 400.0
 
     elo: 'models.FloatField[float]' = DynamicField(
-        models.FloatField, lambda: Eloable,
+        models.FloatField, lambda: PlayerBase,
         lambda Field, Model: Field(default=Model.DEFAULT_ELO)
     )
 
     @classmethod
     def base_game_model(cls):
 
-        class TypedGame(Game[cls]):
+        class TypedGame(GameBase[cls]):
 
-            class Meta(Game.Meta):
+            class Meta(GameBase.Meta):
                 abstract = True
 
             override_inheritance_protection = True
@@ -35,16 +35,16 @@ class Eloable(models.Model):
                 related_name='games_won', on_delete=models.CASCADE, null=True, blank=True
             )
 
-        return cast(type[Game[cls]], TypedGame)
+        return cast(type[GameBase[cls]], TypedGame)
 
-TPlayer = TypeVar('TPlayer', bound = Eloable)
+TPlayer = TypeVar('TPlayer', bound = PlayerBase)
 
-class Game(models.Model, Generic[TPlayer], Uninheritable):
+class GameBase(models.Model, Generic[TPlayer], Uninheritable):
 
     class Meta:
         abstract = True
 
-    intended_use = '<YourPlayerClass>.base_game_model()'
+    intended_use = PlayerBase.base_game_model.__qualname__
 
     PlayerModel: type[TPlayer]
     between: 'models.ManyToManyField[TPlayer, Any]'
@@ -55,12 +55,12 @@ class Game(models.Model, Generic[TPlayer], Uninheritable):
         from .methods import update_elos_after_game
         update_elos_after_game(self)
 
-class TestPlayer(Eloable):
+class TestPlayer(PlayerBase):
     DEFAULT_ELO = 1200.0
 
     name = models.CharField(max_length=255)
 
-# class ErroneousGame(Game[TestPlayer]): # should raise TypeError
+# class ErroneousGame(GameBase[TestPlayer]): # should raise TypeError
 #     pass
 
 class TestGame(TestPlayer.base_game_model()):
