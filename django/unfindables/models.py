@@ -12,6 +12,6 @@ WebhookTargetName = Literal["django", "nextjs"]
 
 webhook = WebhookDecorator[WebhookTargetName]()
 
-@webhook('nextjs')
+@webhook('nextjs', 'INSERT')
 class WebSearch(BaseModel):
     query = models.CharField(max_length=255)

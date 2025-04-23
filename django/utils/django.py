@@ -25,7 +25,6 @@ def DynamicField(
 ):    
     class DynamicField(FieldBaseClass):
 
-        @debug        
         def contribute_to_class(self, cls: type[models.Model], name: str, *args: Any, **kwargs: Any):
             meta = cls._meta
             if meta.abstract or isinstance(meta.apps, StateApps):

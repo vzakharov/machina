@@ -1,8 +1,6 @@
-import os
 from typing import Generic, TypeVar
 
-from utils.errors import throw
-from utils.strings import newlines_to_spaces
+from utils.env import get_required_env
 
 from .models import trigger
 from .types import TriggerEvent
@@ -15,18 +13,13 @@ class WebhookDecorator(Generic[TTargetName]):
         return trigger(
             timing='AFTER',
             events=events or ('INSERT', 'DELETE', 'UPDATE'), # default to all events
-            statement=newlines_to_spaces("""
-                supabase_functions.http_request(
-                    '{}',
-                    'POST',
-                    '{{{{"Content-Type":"application/json"}}}}',
-                    '{{{{}}}}',
-                    '1000'
-            )""".format(
-                os.getenv(
-                    ( env_name := f'WEBHOOK_TARGET_{name.upper()}' )
-                ) or throw(f'{env_name} is not set')
-            )),
+            statement=(
+                f"supabase_functions.http_request("
+                f"'{get_required_env(f'WEBHOOK_TARGET_{name.upper()}')}',"
+                f" 'POST',"
+                f" '{{{{\"Content-Type\":\"application/json\"}}}}',"
+                f" '{{{{}}}}', '1000')"
+            )
         )
     
 webhook = WebhookDecorator[str]() # the simplest case if you don't want to type the target name
