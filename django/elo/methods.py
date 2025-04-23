@@ -25,13 +25,12 @@ def update_elos_after_game(game: Game[TPlayer]):
         game.save()
 
 def calculate_deltas(players: list[TPlayer], winner: TPlayer | None):
+    k = type(players[0]).K_FACTOR
     return {
-        player: (
-            type(players[0]).K_FACTOR 
-            * (
+        player: 
+            k * (
                 ( int(player == winner) if winner else 0.5 )
                 - get_win_probability(player, *players)
             )
-        )
         for player in players
     }.items()
