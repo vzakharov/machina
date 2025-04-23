@@ -1,8 +1,10 @@
 from typing import Any, Generic, TypeVar, cast
 
 from utils.django import DynamicField
+from utils.powerups.inheritance_protection import Uninheritable
 
 from django.db import models
+
 
 class Eloable(models.Model):
 
@@ -26,6 +28,7 @@ class Eloable(models.Model):
             class Meta(Game.Meta):
                 abstract = True
 
+            override_inheritance_protection = True
             PlayerModel = cls
             between = models.ManyToManyField(cls, related_name='games')
             winner = models.ForeignKey(cls, 
@@ -36,10 +39,12 @@ class Eloable(models.Model):
 
 TPlayer = TypeVar('TPlayer', bound = Eloable)
 
-class Game(models.Model, Generic[TPlayer]):
+class Game(models.Model, Generic[TPlayer], Uninheritable):
 
     class Meta:
         abstract = True
+
+    intended_use = '<YourPlayerClass>.base_game_model()'
 
     PlayerModel: type[TPlayer]
     between: 'models.ManyToManyField[TPlayer, Any]'
@@ -54,6 +59,9 @@ class TestPlayer(Eloable):
     DEFAULT_ELO = 1200.0
 
     name = models.CharField(max_length=255)
+
+# class ErroneousGame(Game[TestPlayer]): # should raise TypeError
+#     pass
 
 class TestGame(TestPlayer.base_game_model()):
     
