@@ -1,5 +1,5 @@
-asgiref==3.4.1
-Django==3.2.25
+asgiref==3.8.1
+Django==5.2.0
 django-types
 ipython>=9.1.0
 psycopg2-binary==2.9.9

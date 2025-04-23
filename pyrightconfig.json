@@ -4,7 +4,6 @@
   "reportUnknownParameterType": "none",
   "reportUnknownVariableType": "none",
   "reportUnknownArgumentType": "none",
-  // "reportUnusedImport": "none",
   "include": ["."],
   "exclude": ["**/node_modules", "**/__pycache__"]
 }

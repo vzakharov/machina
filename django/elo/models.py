@@ -1,9 +1,8 @@
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 from utils.django import DynamicField
 
 from django.db import models
-
 
 class Eloable(models.Model):
 
@@ -19,31 +18,38 @@ class Eloable(models.Model):
     )
 
     @classmethod
-    def get_game_model(cls):
+    def base_game_model(cls):
 
-        TPlayer = TypeVar('TPlayer', bound = Eloable)
+        class Game(GameBase[cls]):
 
-        class GenericBase(Generic[TPlayer]):
-            players: 'models.ManyToManyField[TPlayer, Any]'
-            winner: 'models.ForeignKey[TPlayer]'
-
-        class Game(models.Model, GenericBase[TPlayer]):
-
-            class Meta:
+            class Meta(GameBase.Meta):
                 abstract = True
 
-            players = models.ManyToManyField(cls.__name__, related_name='games')
-            winner = models.ForeignKey(cls.__name__, related_name='games_won', on_delete=models.CASCADE)
+            PlayerModel = cls
+            between = models.ManyToManyField(cls, related_name='games')
+            winner = models.ForeignKey(cls, related_name='games_won', on_delete=models.CASCADE)
 
-        return Game[cls]
+        return cast(type[GameBase[cls]], Game)
+
+TPlayer = TypeVar('TPlayer', bound = Eloable)
+
+class GameBase(models.Model, Generic[TPlayer]):
+
+    class Meta:
+        abstract = True
+
+    PlayerModel: type[TPlayer]
+    between: 'models.ManyToManyField[TPlayer, Any]'
+    winner: 'models.ForeignKey[TPlayer]'
 
 class TestPlayer(Eloable):
     DEFAULT_ELO = 1200.0
 
     name = models.CharField(max_length=255)
 
-class TestGame(TestPlayer.get_game_model()):
-    pass
+class TestGame(TestPlayer.base_game_model()):
+    
+    title = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
-        return ' vs '.join(player.name for player in self.players.all())
+        return self.title or ' vs '.join(player.name for player in self.between.all())
