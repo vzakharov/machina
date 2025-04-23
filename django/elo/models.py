@@ -11,6 +11,7 @@ class Eloable(models.Model):
 
     DEFAULT_ELO = 1000.0
     K_FACTOR = 32.0
+    DIVISOR = 400.0
 
     elo: 'models.FloatField[float]' = DynamicField(
         models.FloatField, lambda: Eloable,
@@ -20,27 +21,34 @@ class Eloable(models.Model):
     @classmethod
     def base_game_model(cls):
 
-        class Game(GameBase[cls]):
+        class TypedGame(Game[cls]):
 
-            class Meta(GameBase.Meta):
+            class Meta(Game.Meta):
                 abstract = True
 
             PlayerModel = cls
             between = models.ManyToManyField(cls, related_name='games')
-            winner = models.ForeignKey(cls, related_name='games_won', on_delete=models.CASCADE)
+            winner = models.ForeignKey(cls, 
+                related_name='games_won', on_delete=models.CASCADE, null=True, blank=True
+            )
 
-        return cast(type[GameBase[cls]], Game)
+        return cast(type[Game[cls]], TypedGame)
 
 TPlayer = TypeVar('TPlayer', bound = Eloable)
 
-class GameBase(models.Model, Generic[TPlayer]):
+class Game(models.Model, Generic[TPlayer]):
 
     class Meta:
         abstract = True
 
     PlayerModel: type[TPlayer]
     between: 'models.ManyToManyField[TPlayer, Any]'
-    winner: 'models.ForeignKey[TPlayer]'
+    winner: 'models.ForeignKey[TPlayer | None]'
+    processed = models.BooleanField(default=False)
+
+    def update_elos(self):
+        from .methods import update_elos_after_game
+        update_elos_after_game(self)
 
 class TestPlayer(Eloable):
     DEFAULT_ELO = 1200.0
