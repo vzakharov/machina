@@ -10,4 +10,4 @@ cd ../../
 
 echo "Starting Unfindables services..."
 
-docker-compose up
+docker-compose up -d
