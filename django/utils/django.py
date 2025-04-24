@@ -4,7 +4,6 @@ from typing import Any, Callable, TypeGuard, TypeVar, cast
 from django.db.migrations.state import StateApps
 
 from utils.typing import literal_values
-from utils.logging import debug
 from django.db import models
 
 

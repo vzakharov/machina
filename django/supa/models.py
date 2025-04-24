@@ -1,4 +1,4 @@
-from typing import ClassVar, TypeGuard, TypedDict
+from typing import ClassVar, TypedDict, TypeGuard
 
 from utils.functional import tap
 from utils.logging import debug, info, warning
