@@ -1,5 +1,5 @@
 from types import UnionType
-from typing import Any, Generic, Protocol, TypeVar, get_args
+from typing import Any, Generic, Literal, Protocol, TypeVar, get_args
 
 
 def literal_values(LiteralType: UnionType) -> list[str]:
@@ -14,3 +14,5 @@ TClass = TypeVar('TClass', bound=type, contravariant=True)
 
 class ClassMethod(Protocol, Generic[TClass]):
     def __call__(self, cls: TClass, **kwargs: Any) -> None: ...
+
+Readonly = Literal['THIS IS A READONLY FIELD']
