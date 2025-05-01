@@ -1,4 +1,5 @@
 import abc
+import traceback
 from typing import ClassVar, TypedDict, TypeVar
 
 from django_q.tasks import async_task
@@ -113,6 +114,14 @@ class Task(Taskable, Typed[TTaskResult], PubSubbed[TTaskResult]):
                 async_task(django_q_handler, self, sync=self.DO_NOT_QUEUE)
                 result = await self
             return result
+        except Exception as e:
+            self.error = ErrorInfo(
+                message=str(e),
+                traceback=traceback.format_exc()
+            )
+            self.finished_at = timezone.now()
+            await self.asave()
+            raise
         finally:
             self.stop_heartbeat()
 
