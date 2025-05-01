@@ -7,4 +7,5 @@
   "reportUnknownMemberType": "none",
   "include": ["."],
   "exclude": ["**/node_modules", "**/__pycache__"],
+  "stubPath": "./django/typings"
 }

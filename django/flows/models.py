@@ -1,18 +1,18 @@
 import abc
 from asyncio import sleep
 from datetime import timedelta
-from typing import ClassVar, Coroutine, TypeVar
+from typing import ClassVar, TypeVar
 
+from django_q.tasks import async_task
 from utils.django import IsNull
 from utils.powerups.pubsub import PubSubbed
 from utils.powerups.typed import Typed
-from utils.typing import Jsonable, Readonly
+from utils.typing import Jsonable, Readonly, is_async_function, is_sync_function
 
 from django.db import models, transaction
 from django.db.models.functions import Now
 from django.utils import timezone
 
-from .utils import call_as_async
 
 
 class Tasklike(models.Model):
@@ -76,6 +76,8 @@ class Task(Tasklike, Typed[TTaskResult], PubSubbed[TTaskResult]):
 
     autorun = models.BooleanField(default=True)
 
+    DO_NOT_QUEUE: ClassVar[bool] = False
+
     class Meta(Tasklike.Meta):
 
         abstract = True
@@ -89,14 +91,23 @@ class Task(Tasklike, Typed[TTaskResult], PubSubbed[TTaskResult]):
 
     async def run(self):
         """Explicitly trigger task execution."""
-        await self.set_result(
-            await call_as_async(self.handler)
-        )
+        await self.subscribe()
+        if is_async_function(self.handler):
+            return await self.set_result(await self.handler())
+        else:
+            async_task(django_q_handler, self, sync=self.DO_NOT_QUEUE)
+            return await self
 
     async def before_publish(self, result: TTaskResult):
         self.data = result
+        self.finished_at = timezone.now()
         await self.asave()
 
     @abc.abstractmethod
-    def handler(self) -> TTaskResult | Coroutine[None, None, TTaskResult]:
-        pass
+    async def handler(self) -> TTaskResult:
+        raise NotImplementedError("The handler must be implemented by each subclass of Task")
+
+def django_q_handler(task: Task[TTaskResult]):
+    if not is_sync_function(task.handler):
+        raise RuntimeError("Django Q task handler must be a sync function")
+    task.result = task.handler()
