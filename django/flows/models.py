@@ -1,13 +1,12 @@
 import abc
-import inspect
 import json
 from asyncio import sleep
 from datetime import timedelta
-from typing import ClassVar, Coroutine
+from typing import ClassVar, Coroutine, Generic, TypeVar
 
 from utils.django import IsNull
 from utils.redis import ASYNC_REDIS
-from utils.typing import Readonly
+from utils.typing import Jsonable, Readonly, call_as_async
 
 from django.db import models, transaction
 from django.db.models.functions import Now
@@ -69,8 +68,9 @@ class Tide(Tasklike):
                 tide = cls.objects.create()
             return tide
 
+TTaskResult = TypeVar('TTaskResult', bound=Jsonable)
 
-class Task(Tasklike):
+class Task(Tasklike, Generic[TTaskResult]):
 
     autorun = models.BooleanField(default=True)
 
@@ -91,21 +91,18 @@ class Task(Tasklike):
 
     async def run(self):
         """Explicitly trigger task execution."""
-        # result = await self.handler()
-        if inspect.iscoroutinefunction(self.handler):
-            result = await self.handler()
-        else:
-            result = self.handler()
-        await self._set_result(result)
+        await self.set_result(
+            await call_as_async(self.handler)
+        )
 
     def __await__(self):
-        return self._await_result().__await__()
+        return self.await_result().__await__()
 
-    async def _set_result(self, result):
+    async def set_result(self, result: TTaskResult):
         await ASYNC_REDIS.set(f"{self.redis_key}:result", json.dumps(result))
         await ASYNC_REDIS.publish(f"{self.redis_key}:done", "ok")
 
-    async def _await_result(self):
+    async def await_result(self):
         pubsub = ASYNC_REDIS.pubsub()
         await pubsub.subscribe(f"{self.redis_key}:done")
 
@@ -116,5 +113,5 @@ class Task(Tasklike):
                 return json.loads(raw)
 
     @abc.abstractmethod
-    def handler(self) -> None | Coroutine[None, None, None]:
+    def handler(self) -> TTaskResult | Coroutine[None, None, TTaskResult]:
         pass
