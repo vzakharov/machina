@@ -107,11 +107,11 @@ class Task(Tasklike, Typed[TTaskResult], PubSubbed[TTaskResult]):
     async def load_result(self):
         match self.succeeded:
             case True:
-                return self.data
+                return ( True, self.data )
             case False:
                 raise RuntimeError("Task failed")
             case None:
-                return ResultNotReady()
+                return ( False, None )
 
     @abc.abstractmethod
     async def handler(self) -> TTaskResult:

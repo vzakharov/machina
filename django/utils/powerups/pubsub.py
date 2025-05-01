@@ -1,7 +1,7 @@
 import abc
 import json
 from asyncio import gather
-from typing import Generic, TypeVar, cast
+from typing import Generic, Literal, TypeVar, cast
 
 from asgiref.sync import async_to_sync
 from utils.redis import ASYNC_REDIS, REDIS
@@ -11,9 +11,6 @@ from redis.asyncio.client import PubSub
 from django.db import models
 
 TResult = TypeVar("TResult", bound=Jsonable)
-
-class ResultNotReady:
-    pass
 
 class PubSubbed(models.Model, Generic[TResult]):
 
@@ -43,9 +40,13 @@ class PubSubbed(models.Model, Generic[TResult]):
         raise NotImplementedError("`save_result` must be implemented by each subclass of `PubSubbed`")
 
     @abc.abstractmethod
-    async def load_result(self) -> TResult | ResultNotReady:
+    async def load_result(self) -> tuple[Literal[True], TResult] | tuple[Literal[False], None]:
         """
         Load the result from the database. Mandatory to implement because the value stored in Redis will be deleted as soon as it is first read.
+
+        Returns a tuple:
+        - The first element is a boolean indicating whether the result is ready.
+        - The second element is the result, if it is ready.
         """
         raise NotImplementedError("`load_result` must be implemented by each subclass of `PubSubbed`")
 
@@ -56,10 +57,9 @@ class PubSubbed(models.Model, Generic[TResult]):
 
     async def _get_result(self):
 
-        if ( 
-            existing_result := await self.load_result() 
-        ) is not ResultNotReady:
-            return existing_result
+        result_ready, result = await self.load_result()
+        if result_ready:
+            return result
 
         async def get_raw_result():
             pubsub = self.pubsub or await self.subscribe()
