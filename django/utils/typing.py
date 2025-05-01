@@ -2,7 +2,6 @@ import inspect
 from types import UnionType
 from typing import Any, Callable, Coroutine, Generic, Literal, Protocol, TypeGuard, TypeVar, get_args
 
-from utils.errors import ShouldNotHappenError
 
 
 def literal_values(LiteralType: UnionType) -> list[str]:
@@ -37,13 +36,3 @@ def aint_async_function(
 ) -> TypeGuard[Callable[[], TJsonable]]:
     return not is_async_function(func)
 
-async def call_as_async(
-    func: MaybeAsyncFunction[TJsonable]
-):
-    if is_async_function(func):
-        result = await func()
-    elif aint_async_function(func):
-        result = func()
-    else:
-        raise ShouldNotHappenError(f"{func} is neither async nor sync")
-    return result

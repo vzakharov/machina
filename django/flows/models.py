@@ -1,16 +1,18 @@
 import abc
-import json
 from asyncio import sleep
 from datetime import timedelta
-from typing import ClassVar, Coroutine, Generic, TypeVar
+from typing import ClassVar, Coroutine, TypeVar
 
 from utils.django import IsNull
-from utils.redis import ASYNC_REDIS
-from utils.typing import Jsonable, Readonly, call_as_async
+from utils.powerups.pubsub import PubSubbed
+from utils.powerups.typed import Typed
+from utils.typing import Jsonable, Readonly
 
 from django.db import models, transaction
 from django.db.models.functions import Now
 from django.utils import timezone
+
+from .utils import call_as_async
 
 
 class Tasklike(models.Model):
@@ -70,7 +72,7 @@ class Tide(Tasklike):
 
 TTaskResult = TypeVar('TTaskResult', bound=Jsonable)
 
-class Task(Tasklike, Generic[TTaskResult]):
+class Task(Tasklike, Typed[TTaskResult], PubSubbed[TTaskResult]):
 
     autorun = models.BooleanField(default=True)
 
@@ -79,15 +81,11 @@ class Task(Tasklike, Generic[TTaskResult]):
         abstract = True
         indexes = [
             models.Index(
-                name='task_is_running_idx',
+                name='%(app_label)s_%(model_name)s_is_running_idx',
                 fields=['uuid'],
                 condition=models.Q(is_running=True)
             )
         ]
-
-    @property
-    def redis_key(self):
-        return f"flows:{self._meta.app_label}.{self._meta.model_name}:{self.pk}"
 
     async def run(self):
         """Explicitly trigger task execution."""
@@ -95,22 +93,9 @@ class Task(Tasklike, Generic[TTaskResult]):
             await call_as_async(self.handler)
         )
 
-    def __await__(self):
-        return self.await_result().__await__()
-
-    async def set_result(self, result: TTaskResult):
-        await ASYNC_REDIS.set(f"{self.redis_key}:result", json.dumps(result))
-        await ASYNC_REDIS.publish(f"{self.redis_key}:done", "ok")
-
-    async def await_result(self):
-        pubsub = ASYNC_REDIS.pubsub()
-        await pubsub.subscribe(f"{self.redis_key}:done")
-
-        async for message in pubsub.listen():
-            if message["type"] == "message":
-                raw = await ASYNC_REDIS.get(f"{self.redis_key}:result")
-                await pubsub.unsubscribe(f"{self.redis_key}:done")
-                return json.loads(raw)
+    async def before_publish(self, result: TTaskResult):
+        self.data = result
+        await self.asave()
 
     @abc.abstractmethod
     def handler(self) -> TTaskResult | Coroutine[None, None, TTaskResult]:
