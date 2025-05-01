@@ -1,5 +1,6 @@
 import abc
-from asyncio import sleep
+import asyncio
+from asyncio import create_task, sleep
 from datetime import timedelta
 from typing import ClassVar, TypeVar
 
@@ -7,12 +8,12 @@ from django_q.tasks import async_task
 from utils.django import IsNull
 from utils.powerups.pubsub import PubSubbed
 from utils.powerups.typed import Typed
-from utils.typing import Jsonable, Readonly, is_async_function, is_sync_function
+from utils.typing import (Jsonable, Readonly, is_async_function,
+                          is_sync_function, none)
 
 from django.db import models, transaction
 from django.db.models.functions import Now
 from django.utils import timezone
-
 
 
 class Tasklike(models.Model):
@@ -28,7 +29,7 @@ class Tasklike(models.Model):
     last_alive_at = models.DateTimeField(db_default=Now())
     stuck = models.BooleanField(db_default=False, db_index=True)
     succeeded = models.BooleanField(db_default=False, db_index=True, null=True)
-
+    
     is_running: 'models.Field[Readonly, bool]' = models.GeneratedField( # pyright: ignore[reportAttributeAccessIssue]
         expression=IsNull('finished_at'),
         output_field=models.BooleanField(),
@@ -36,12 +37,23 @@ class Tasklike(models.Model):
         db_index=True,
     )
 
+    heartbeat_task = none(asyncio.Task[None])
+
     async def heartbeat(self):
         while self.is_running:
             await sleep(self.HEARBEAT_INTERVAL.total_seconds())
             self.last_alive_at = timezone.now()
             await self.asave(update_fields=['last_alive_at'])
-
+    
+    def start_heartbeat(self):
+        if not self.heartbeat_task or self.heartbeat_task.done():
+            self.heartbeat_task = create_task(self.heartbeat())
+        return self.heartbeat_task
+    
+    def stop_heartbeat(self):
+        if self.heartbeat_task and not self.heartbeat_task.done():
+            self.heartbeat_task.cancel()
+            self.heartbeat_task = None
 
 class Tide(Tasklike):
     """
@@ -93,11 +105,18 @@ class Task(Tasklike, Typed[TTaskResult], PubSubbed[TTaskResult]):
     async def run(self):
         """Explicitly trigger task execution."""
         await self.subscribe()
-        if is_async_function(self.handler):
-            return await self._set_result(await self.handler())
-        else:
-            async_task(django_q_handler, self, sync=self.DO_NOT_QUEUE)
-            return await self
+        
+        self.start_heartbeat()
+        
+        try:
+            if is_async_function(self.handler):
+                result = await self.set_result(await self.handler())
+            else:
+                async_task(django_q_handler, self, sync=self.DO_NOT_QUEUE)
+                result = await self
+            return result
+        finally:
+            self.stop_heartbeat()
 
     async def save_result(self, result: TTaskResult):
         self.data = result

@@ -27,7 +27,7 @@ class PubSubbed(models.Model, Generic[TResult]):
     def redis_done_channel(self) -> str:
         return f"{self.redis_key}:done"
     
-    async def _set_result(self, result: TResult):
+    async def set_result(self, result: TResult):
         await gather(
             ASYNC_REDIS.set(f"{self.redis_key}:result", json.dumps(result)),
             self.save_result(result)
@@ -55,7 +55,7 @@ class PubSubbed(models.Model, Generic[TResult]):
         await self.pubsub.subscribe(self.redis_done_channel)
         return self.pubsub
 
-    async def _get_result(self):
+    async def get_result(self):
 
         result_ready, result = await self.load_result()
         if result_ready:
@@ -89,7 +89,7 @@ class PubSubbed(models.Model, Generic[TResult]):
     
     @result.setter
     def result(self, value: TResult):
-        async_to_sync(self._set_result)(value)
+        async_to_sync(self.set_result)(value)
 
     def __await__(self):
-        return self._get_result().__await__()
+        return self.get_result().__await__()
