@@ -1,10 +1,11 @@
 from types import UnionType
 from typing import Any, Callable, TypeGuard, TypeVar, cast
 
-from django.db.migrations.state import StateApps
-
 from utils.typing import literal_values
+
 from django.db import models
+from django.db.migrations.state import StateApps
+from django.db.models import Case, When
 
 
 def choices_from_literals(LiteralType: UnionType) -> list[tuple[str, str]]:
@@ -35,3 +36,10 @@ def DynamicField(
             field.contribute_to_class(cls, name, *args, **kwargs)
     
     return cast(TField, DynamicField())
+
+def IsNull(field_name: str):
+    return Case(
+        When(**{f"{field_name}__isnull": True}, then=True),
+        default=False,
+        output_field=models.BooleanField()
+    )

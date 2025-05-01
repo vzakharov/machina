@@ -55,17 +55,17 @@ class GameBase(models.Model, Generic[TPlayer], Uninheritable):
         from .methods import update_elos_after_game
         update_elos_after_game(self)
 
-class TestPlayer(PlayerBase):
-    DEFAULT_ELO = 1200.0
+# class TestPlayer(PlayerBase):
+#     DEFAULT_ELO = 1200.0
 
-    name = models.CharField(max_length=255)
+#     name = models.CharField(max_length=255)
 
-# class ErroneousGame(GameBase[TestPlayer]): # should raise TypeError
-#     pass
+# # class ErroneousGame(GameBase[TestPlayer]): # should raise TypeError
+# #     pass
 
-class TestGame(TestPlayer.base_game_model()):
+# class TestGame(TestPlayer.base_game_model()):
     
-    title = models.CharField(max_length=255, null=True, blank=True)
+#     title = models.CharField(max_length=255, null=True, blank=True)
 
-    def __str__(self):
-        return self.title or ' vs '.join(player.name for player in self.between.all())
+#     def __str__(self):
+#         return self.title or ' vs '.join(player.name for player in self.between.all())

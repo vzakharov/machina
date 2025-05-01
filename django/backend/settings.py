@@ -162,8 +162,8 @@ LOGGING = {
     }
 }
 
-# Redis settings for awaitable tasks
-AWAITABLE_TASK_REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
+# Redis settings
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
 
 # Django Q2 settings
 Q_CLUSTER = {
