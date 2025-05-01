@@ -1,18 +1,28 @@
 import abc
-from typing import ClassVar, TypeVar
+from typing import ClassVar, TypedDict, TypeVar
 
 from django_q.tasks import async_task
 from utils.django import IsNull
 from utils.powerups.pubsub import PubSubbed
 from utils.powerups.typed import Typed
-from utils.typing import Jsonable, is_async_function, is_sync_function
+from utils.typing import (Jsonable, Readonly, is_async_function,
+                          is_sync_function)
 
 from django.db import models, transaction
+from django.db.models import Case, When
 from django.db.models.functions import Now
 from django.utils import timezone
 
 from .heartbeat import Heartbeatable
 
+
+class ErrorInfo(TypedDict):
+    message: str
+    traceback: str
+
+class TaskError(Exception):
+    def __init__(self, error: ErrorInfo):
+        self.error = error
 
 class Taskable(Heartbeatable):
 
@@ -22,10 +32,22 @@ class Taskable(Heartbeatable):
     started_at = models.DateTimeField(db_default=Now())
     finished_at = models.DateTimeField(null=True, blank=True)
     stuck = models.BooleanField(db_default=False, db_index=True)
-    succeeded = models.BooleanField(db_default=False, db_index=True, null=True)
-    
+    error: 'models.JSONField[ErrorInfo | None]' = models.JSONField(default=None, null=True)
+
     is_running = models.GeneratedField( # pyright: ignore[reportAttributeAccessIssue]
         expression=IsNull('finished_at'),
+        output_field=models.BooleanField(),
+        db_persist=True,
+        db_index=True,
+    )
+
+    succeeded: 'models.Field[Readonly, bool | None]' = models.GeneratedField( # pyright: ignore[reportAttributeAccessIssue]
+        expression=Case(
+            When(finished_at__isnull=True, then=None),
+            When(error__isnull=True, then=True),
+            default=False,
+            output_field=models.BooleanField(),
+        ),
         output_field=models.BooleanField(),
         db_persist=True,
         db_index=True,
@@ -67,7 +89,7 @@ class Task(Taskable, Typed[TTaskResult], PubSubbed[TTaskResult]):
 
     DO_NOT_QUEUE: ClassVar[bool] = False
 
-    class Meta(Taskable.Meta):
+    class Meta(Taskable.Meta, Typed.Meta, PubSubbed.Meta):
 
         abstract = True
         indexes = [

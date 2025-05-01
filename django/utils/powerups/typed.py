@@ -9,6 +9,9 @@ TData = TypeVar('TData', bound=Jsonable)
 
 class Typed(models.Model, Generic[TData]):
 
+    class Meta:
+        abstract = True
+
     @classmethod
     def get_serializer_class(cls):
         

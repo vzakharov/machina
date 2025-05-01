@@ -14,6 +14,9 @@ TResult = TypeVar("TResult", bound=Jsonable)
 
 class PubSubbed(models.Model, Generic[TResult]):
 
+    class Meta:
+        abstract = True
+
     pubsub = none(PubSub)
 
     def redis_key(self) -> str:
