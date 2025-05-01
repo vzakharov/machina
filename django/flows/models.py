@@ -5,7 +5,7 @@ from typing import ClassVar, TypeVar
 
 from django_q.tasks import async_task
 from utils.django import IsNull
-from utils.powerups.pubsub import PubSubbed, ResultNotReady
+from utils.powerups.pubsub import PubSubbed
 from utils.powerups.typed import Typed
 from utils.typing import Jsonable, Readonly, is_async_function, is_sync_function
 
