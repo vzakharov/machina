@@ -5,7 +5,7 @@ from typing import ClassVar, TypeVar
 
 from django_q.tasks import async_task
 from utils.django import IsNull
-from utils.powerups.pubsub import PubSubbed
+from utils.powerups.pubsub import PubSubbed, ResultNotReady
 from utils.powerups.typed import Typed
 from utils.typing import Jsonable, Readonly, is_async_function, is_sync_function
 
@@ -27,8 +27,9 @@ class Tasklike(models.Model):
     finished_at = models.DateTimeField(null=True, blank=True)
     last_alive_at = models.DateTimeField(db_default=Now())
     stuck = models.BooleanField(db_default=False, db_index=True)
+    succeeded = models.BooleanField(db_default=False, db_index=True, null=True)
 
-    is_running: 'models.Field[Readonly, bool]' = models.GeneratedField(
+    is_running: 'models.Field[Readonly, bool]' = models.GeneratedField( # pyright: ignore[reportAttributeAccessIssue]
         expression=IsNull('finished_at'),
         output_field=models.BooleanField(),
         db_persist=True,
@@ -93,15 +94,24 @@ class Task(Tasklike, Typed[TTaskResult], PubSubbed[TTaskResult]):
         """Explicitly trigger task execution."""
         await self.subscribe()
         if is_async_function(self.handler):
-            return await self.set_result(await self.handler())
+            return await self._set_result(await self.handler())
         else:
             async_task(django_q_handler, self, sync=self.DO_NOT_QUEUE)
             return await self
 
-    async def before_publish(self, result: TTaskResult):
+    async def save_result(self, result: TTaskResult):
         self.data = result
         self.finished_at = timezone.now()
         await self.asave()
+
+    async def load_result(self):
+        match self.succeeded:
+            case True:
+                return self.data
+            case False:
+                raise RuntimeError("Task failed")
+            case None:
+                return ResultNotReady()
 
     @abc.abstractmethod
     async def handler(self) -> TTaskResult:

@@ -2,7 +2,7 @@ asgiref==3.8.1
 Django==5.2.0
 djangorestframework==3.16.0
 djangorestframework-types
-django-stubs
+django-types
 ipython>=9.1.0
 psycopg2-binary==2.9.9
 pytz==2025.2

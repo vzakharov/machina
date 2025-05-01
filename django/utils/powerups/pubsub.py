@@ -1,3 +1,4 @@
+import abc
 import json
 from asyncio import gather
 from typing import Generic, TypeVar, cast
@@ -9,9 +10,12 @@ from redis.asyncio.client import PubSub
 
 from django.db import models
 
-TData = TypeVar("TData", bound=Jsonable)
+TResult = TypeVar("TResult", bound=Jsonable)
 
-class PubSubbed(models.Model, Generic[TData]):
+class ResultNotReady:
+    pass
+
+class PubSubbed(models.Model, Generic[TResult]):
 
     pubsub = none(PubSub)
 
@@ -26,24 +30,37 @@ class PubSubbed(models.Model, Generic[TData]):
     def redis_done_channel(self) -> str:
         return f"{self.redis_key}:done"
     
-    async def set_result(self, result: TData):
+    async def _set_result(self, result: TResult):
         await gather(
             ASYNC_REDIS.set(f"{self.redis_key}:result", json.dumps(result)),
-            self.before_publish(result)
+            self.save_result(result)
         )
         await ASYNC_REDIS.publish(self.redis_done_channel, 'ok')
         return result
 
-    async def before_publish(self, result: TData):
-        ...
+    @abc.abstractmethod
+    async def save_result(self, result: TResult) -> None:
+        raise NotImplementedError("`save_result` must be implemented by each subclass of `PubSubbed`")
+
+    @abc.abstractmethod
+    async def load_result(self) -> TResult | ResultNotReady:
+        """
+        Load the result from the database. Mandatory to implement because the value stored in Redis will be deleted as soon as it is first read.
+        """
+        raise NotImplementedError("`load_result` must be implemented by each subclass of `PubSubbed`")
 
     async def subscribe(self):
         self.pubsub = ASYNC_REDIS.pubsub()
         await self.pubsub.subscribe(self.redis_done_channel)
         return self.pubsub
 
-    async def wait_for_result(self):
-        
+    async def _get_result(self):
+
+        if ( 
+            existing_result := await self.load_result() 
+        ) is not ResultNotReady:
+            return existing_result
+
         async def get_raw_result():
             pubsub = self.pubsub or await self.subscribe()
             async for message in pubsub.listen():
@@ -68,11 +85,11 @@ class PubSubbed(models.Model, Generic[TData]):
             raise RuntimeError(f"No result for {self.redis_key} yet. Consider awaiting the instance instead.")
         if not isinstance(result, str):
             raise RuntimeError(f"Result for {self.redis_key} is not a string")
-        return cast(TData, json.loads(result))
+        return cast(TResult, json.loads(result))
     
     @result.setter
-    def result(self, value: TData):
-        async_to_sync(self.set_result)(value)
+    def result(self, value: TResult):
+        async_to_sync(self._set_result)(value)
 
     def __await__(self):
-        return self.wait_for_result().__await__()
+        return self._get_result().__await__()
