@@ -1,6 +1,7 @@
 import abc
+from asyncio import create_task
 import traceback
-from typing import ClassVar, TypedDict, TypeVar
+from typing import Any, ClassVar, TypedDict, TypeVar
 
 from django_q.tasks import async_task
 from utils.django import IsNull
@@ -30,13 +31,21 @@ class Taskable(Heartbeatable):
     class Meta(Heartbeatable.Meta):
         abstract = True
 
-    started_at = models.DateTimeField(db_default=Now())
+    created_at = models.DateTimeField(db_default=Now())
+    started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     stuck = models.BooleanField(db_default=False, db_index=True)
     error: 'models.JSONField[ErrorInfo | None]' = models.JSONField(default=None, null=True)
 
     is_running = models.GeneratedField( # pyright: ignore[reportAttributeAccessIssue]
         expression=IsNull('finished_at'),
+        output_field=models.BooleanField(),
+        db_persist=True,
+        db_index=True,
+    )
+
+    is_pending: 'models.Field[Readonly, bool]' = models.GeneratedField( # pyright: ignore[reportAttributeAccessIssue]
+        expression=IsNull('started_at'),
         output_field=models.BooleanField(),
         db_persist=True,
         db_index=True,
@@ -74,15 +83,29 @@ class Tide(Taskable):
         Gets the current tide, or creates a new one if there is no current tide or if the current tide got stuck. In the latter case, the current tide is marked as stuck and finished.
         """
         with transaction.atomic():
-            tide, _ = cls.objects.select_for_update().get_or_create(finished_at__isnull=True)
-            if tide.latest_heartbeat < timezone.now() - cls.HEARBEAT_INTERVAL - cls.HEARTBEAT_GRACE_PERIOD:
-                tide.stuck = True
-                tide.finished_at = timezone.now()
-                tide.save()
-                tide = cls.objects.create()
+            tide, created = cls.objects.select_for_update().get_or_create(finished_at__isnull=True)
+            if created:
+                create_task(tide.start())
+            else:
+                if tide.latest_heartbeat < timezone.now() - cls.HEARBEAT_INTERVAL - cls.HEARTBEAT_GRACE_PERIOD:
+                    tide.stuck = True
+                    tide.finished_at = timezone.now()
+                    tide.save()
+                    tide = cls.objects.create()
             return tide
+        
+    async def start(self):
+        for Model in task_models:
+            while True:
+                with transaction.atomic():
+                    task = await Model.objects.filter(is_pending=True).select_for_update().afirst()
+                    if task:
+                        await task._run()
+                    else:
+                        break
+                await asyncio.sleep(1)
 
-TTaskResult = TypeVar('TTaskResult', bound=Jsonable)
+task_models: list[type['Task[Any]']] = []
 
 class Task(Taskable, Typed[TTaskResult], PubSubbed[TTaskResult]):
 
@@ -101,10 +124,17 @@ class Task(Taskable, Typed[TTaskResult], PubSubbed[TTaskResult]):
             )
         ]
 
-    async def run(self):
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        meta = cls._meta
+        if not meta.abstract and issubclass(cls, Task):
+            task_models.append(cls)
+
+    async def _run(self):
         """Explicitly trigger task execution."""
         await self.subscribe()
-        
+        self.started_at = timezone.now()
+        await self.asave()
         self.start_heartbeat()
         
         try:
