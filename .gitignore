@@ -1,3 +1,5 @@
+.cursorrules
+
 # Docker volumes
 volumes/db/data/
 volumes/storage/
@@ -97,4 +99,3 @@ yarn-error.log*
 # Docker
 .docker/
 docker-compose.override.yml
-.cursorrules
