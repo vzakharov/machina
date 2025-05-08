@@ -159,3 +159,23 @@ LOGGING = {
         'level': 'DEBUG',
     }
 }
+
+# Redis settings
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
+
+# Django Q2 settings
+Q_CLUSTER = {
+    'name': 'machina',
+    'workers': 4,
+    'recycle': 500,
+    'timeout': 60,
+    'compress': True,
+    'save_limit': 250,
+    'queue_limit': 500,
+    'label': 'Django Q',
+    'redis': {
+        'host': 'redis',
+        'port': 6379,
+        'db': 0,
+    }
+}

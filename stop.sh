@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Stopping Unfindables services..."
+echo "Stopping Machina services..."
 
 docker-compose down
 

@@ -1,11 +1,15 @@
-# Unfindables
+# Machina
 
-A full-stack web application that curates and showcases obscure but useful websites, tools, and digital gems for indie developers.
+A megarepo housing various projects and experiments, serving as the central hub for my development work.
 
 ## Project Structure
 
 - `/nextjs` - Next.js frontend application
-- `/django` - Django backend server used for scraping and storing data
+- `/django` - Django backend server containing multiple applications:
+  - `unfindables` - App that curates and showcases obscure but useful websites and tools for indie developers
+  - `elo` - Elo rating system implementation
+  - `flows` - Workflow automation tools
+  - `supa` - Supabase integration utilities
 - Supabase stack for database, auth, storage, and API
 
 ## Development Setup
@@ -20,8 +24,8 @@ A full-stack web application that curates and showcases obscure but useful websi
 
 1. Clone the repository:
 ```
-git clone https://github.com/yourusername/unfindables.git
-cd unfindables
+git clone https://github.com/yourusername/machina.git
+cd machina
 ```
 
 2. Start the Docker containers:
@@ -30,14 +34,20 @@ docker compose up
 ```
 
 3. Access the various services:
-   - Frontend: http://unfindables.localhost
-   - Django Admin: http://django.unfindables.localhost
-   - Supabase Studio: http://studio.unfindables.localhost
-   - API: http://api.unfindables.localhost
+   - Frontend: http://machina.localhost
+   - Django Admin: http://django.machina.localhost
+   - Supabase Studio: http://studio.supabase.localhost
+   - API: http://api.supabase.localhost
 
 ### Environment Variables
 
 The project uses environment variables defined in `.env` file. You can customize them as needed.
+
+## Featured Projects
+
+### Unfindables
+
+Unfindables is an application within Machina that helps developers discover valuable but lesser-known digital resources. It combines the Next.js frontend with the Django backend to deliver a seamless experience for discovering and sharing internet gems.
 
 ## Supabase Services
 
@@ -50,8 +60,8 @@ Our setup uses a simplified version of the Supabase stack with the following com
 
 ### Accessing Supabase
 
-- Supabase Studio: http://studio.unfindables.localhost
-- Supabase API: http://api.unfindables.localhost
+- Supabase Studio: http://studio.supabase.localhost
+- Supabase API: http://api.supabase.localhost
 
 ### Default Credentials
 
@@ -86,10 +96,6 @@ For more information, see the [Supabase documentation](https://supabase.com/docs
 - Update this file and README.md on significant changes
 - As the app runs in docker, run commands via docker CLI
 
-## About
-
-Unfindables is a full-stack web application that helps developers discover valuable but lesser-known digital resources. The platform combines a modern Next.js frontend with a robust Django backend to deliver a seamless experience for discovering and sharing internet gems.
-
 ## Tech Stack
 
 ### Frontend
@@ -100,11 +106,11 @@ Unfindables is a full-stack web application that helps developers discover valua
 ### Backend
 - [Django](https://www.djangoproject.com/) - Python web framework
 - [Django REST Framework](https://www.django-rest-framework.org/) - API development
-- SQLite (development) / PostgreSQL (production)
+- PostgreSQL - Production database
 
 ## Contributing
 
-We welcome contributions! If you have suggestions for websites or tools to add, or if you'd like to help improve the platform, please feel free to open an issue or submit a pull request.
+We welcome contributions! If you'd like to help improve any component of this project, please feel free to open an issue or submit a pull request.
 
 ## License
 
