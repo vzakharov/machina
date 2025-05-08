@@ -167,7 +167,7 @@ REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
 
 # Django Q2 settings
 Q_CLUSTER = {
-    'name': 'unfindables',
+    'name': 'machina',
     'workers': 4,
     'recycle': 500,
     'timeout': 60,

@@ -20,7 +20,7 @@ services:
       - supabase_default
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.nextjs.rule=Host(`unfindables.localhost`)"
+      - "traefik.http.routers.nextjs.rule=Host(`machina.localhost`)"
       - "traefik.http.services.nextjs.loadbalancer.server.port=3000"
 
   django:
@@ -38,7 +38,7 @@ services:
       - supabase_default
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.django.rule=Host(`django.unfindables.localhost`)"
+      - "traefik.http.routers.django.rule=Host(`django.machina.localhost`)"
       - "traefik.http.services.django.loadbalancer.server.port=8000"
 
   redis:
